@@ -1,129 +1,163 @@
-Resource and Capacity Management App
+# Resource and Capacity Management App
+
 A scalable, web-based solution that centralizes resource data, streamlines activity assignments, and provides dynamic dashboards for capacity planning. The application supports role‑based access, analytics, and collaborative features such as inline comments and notifications.
 
-Tech Stack
-Frontend: Next.js 16 with React 19
+## Tech Stack
 
-Styling: Tailwind CSS 4
+- **Frontend**: Next.js 16 with React 19
+- **Styling**: Tailwind CSS 4
+- **Backend**: Express.js API server
+- **Database**: MongoDB
 
-Backend: Express.js API server
+## Getting Started
 
-Database: MongoDB (configured in server.js; if you prefer MySQL, update the server configuration and queries accordingly)
+### Prerequisites
 
-Getting Started
-Prerequisites
-Node.js v18 or higher
+- Node.js (v18 or higher)
+- Mongodb database
+- Git
 
-MongoDB (local, Docker, or Atlas)
+### Installation
 
-Git
-
-Clone and install
-bash
-git clone <repo-url>
-cd <repo-directory>
+1. Install dependencies:
+```bash
 npm install
-# ensure the MongoDB driver is present
-npm install mongodb
-Environment variables
-Create a .env file in the project root with these keys:
+```
 
-Code
-PORT=3001
-MONGODB_URI=mongodb://localhost:27017
-DB_NAME=ResourceManagementAPP_DB
-NODE_ENV=development
-Add .env to .gitignore and include a .env.example in the repo.
+2. Configure your database connection in `server.js`
 
-Run the app locally
-bash
-# start the Next.js frontend (development)
+3. Run the development server:
+```bash
 npm run dev
+```
 
-# in a separate terminal start the Express API (if not started by the same process)
+4. In a separate terminal, start the API server:
+```bash
 node server.js
+```
 
-# open the frontend
-# http://localhost:3000
-Project Structure
-Code
-.
-├─ app                 # Next.js App Router pages and layouts
-├─ public              # Static assets
-├─ src
-│  ├─ server.js        # Express API server and DB connection
-│  ├─ routes
-│  ├─ controllers
-│  └─ services
-├─ scripts
-│  ├─ seed
-│  └─ migrations
-├─ tests
-├─ .env.example
-├─ package.json
-└─ README.md
-Notes
+5. Open [http://localhost:3000](http://localhost:3000) to view the application
 
-Frontend code lives in /app and uses React Server Components.
+## Project Structure
 
-Backend code lives in src (or root server.js) and exposes API endpoints used by the frontend.
+- `/app` - Next.js application pages and layouts
+- `/public` - Static assets
+- `server.js` - Express API server
 
-Seed and migration scripts belong in scripts/ and should be idempotent.
+# Project Structure
+/app - Next.js application pages and layouts
 
-Database Setup and Connection
-Recommended connection pattern
-Connect once at startup, verify with a ping, then start the HTTP server to avoid routes running before the DB is ready.
+/public - Static assets
 
-Attach the verified DB handle to app.locals or inject it into requests via middleware so handlers use the same connection.
+src or root server.js - Express API server and DB connection
 
-Example connection snippet
+/scripts/seed - Idempotent seed scripts
 
-javascript
+/scripts/migrations - Migration scripts and runner
+
+/tests - Unit and integration tests
+
+.env.example - Example environment variables
+
+package.json - npm scripts and dependencies
+
+# Database Setup (MongoDB)
+Connection pattern (recommended)
+Connect once at startup, verify with a ping, then start the HTTP server so routes never run with an undefined DB handle.
+
+# Example server.js connection snippet
+
+- javascript
+require('dotenv').config();
+const express = require('express');
 const { MongoClient, ServerApiVersion } = require('mongodb');
+
+const app = express();
 const client = new MongoClient(process.env.MONGODB_URI, {
   serverApi: { version: ServerApiVersion.v1, strict: true, deprecationErrors: true }
 });
 
-await client.connect();
-const db = client.db(process.env.DB_NAME || 'ResourceManagementAPP_DB');
-await db.command({ ping: 1 });
-// attach db to app.locals or pass into services
-Seeding data
-Place idempotent seed scripts in scripts/seed/. Use updateOne(..., { upsert: true }) to avoid duplicates.
+async function start() {
+  await client.connect();
+  const db = client.db(process.env.DB_NAME || 'ResourceManagementAPP_DB');
+  await db.command({ ping: 1 });
+  app.locals.db = db;
 
-Example seed runner:
+  // middleware to inject db into handlers
+  app.use((req, res, next) => {
+    if (!req.app.locals.db) return res.status(503).json({ error: 'DB not ready' });
+    req.db = req.app.locals.db;
+    next();
+  });
 
-bash
+  app.listen(process.env.PORT || 3001, () => console.log('Server listening'));
+}
+
+start();
+process.on('SIGINT', async () => { await client.close(); process.exit(0); });
+process.on('SIGTERM', async () => { await client.close(); process.exit(0); });
+
+# Environment variables
+MONGODB_URI — connection string (local or Atlas)
+
+DB_NAME — database name used by the app
+
+# Seeding data
+Keep idempotent seed scripts in scripts/seed/. Use updateOne(..., { upsert: true }) to avoid duplicates.
+
+Example run:
+
+- bash
 node scripts/seed/employees.js
-Indexes and validation
-Create indexes for common filters:
+Bulk import (JSON/CSV) with mongoimport:
 
-javascript
+- bash
+mongoimport --uri="%MONGODB_URI%/%DB_NAME%" --collection=employee --file=employees.json --jsonArray
+Indexes and validation
+Create indexes in a setup script or migration:
+
+- javascript
 db.employee.createIndex({ emp_id: 1 }, { unique: true });
 db.employee.createIndex({ dept_no: 1 });
 db.account.createIndex({ emp_id: 1 }, { unique: true });
-Use MongoDB JSON schema validators to enforce document shapes for critical collections.
+db.account.createIndex({ "account.acc_type_id": 1 });
+Use JSON Schema validators for critical collections:
 
-Windows tips
+- javascript
+db.createCollection("employee", {
+  validator: {
+    $jsonSchema: {
+      bsonType: "object",
+      required: ["emp_id","emp_name","emp_title","dept_no"],
+      properties: {
+        emp_id: { bsonType: "int" },
+        emp_name: { bsonType: "string" },
+        emp_title: { bsonType: "string" },
+        dept_no: { bsonType: "string" },
+        manager_id: { bsonType: ["int","null"] }
+      }
+    }
+  }
+});
+
+# Windows tips
 Install MongoDB via the MSI installer and run it as a Windows service, or use Docker Desktop with a Mongo image.
 
 Ensure MongoDB tools (mongoimport, mongodump, mongorestore) are in your PATH or call them with full paths.
 
-Features Planned
-Resource management and tracking
 
-Activity assignment workflows
+## Features (Planned)
 
-Dynamic capacity planning dashboards
+- Resource management and tracking
+- Activity assignment workflows
+- Dynamic capacity planning dashboards
+- Role-based access control
+- Analytics and reporting
+- Inline comments and notifications
 
-Role‑based access control
+## Development
 
-Analytics and reporting
-
-Inline comments and notifications
-
-Development Notes
-The frontend uses Next.js App Router and React Server Components; edit files in /app to change pages and layouts.
+Frontend uses Next.js App Router and React Server Components; edit files in /app.
 
 Keep business logic in controllers/services, not in route handlers.
 
@@ -131,15 +165,18 @@ Add request validation (Joi or Zod) and password hashing (bcrypt) before exposin
 
 Avoid unbounded find({}) queries in production; add pagination and indexes.
 
-Add logging (morgan) and consider a simple health endpoint that reports DB connectivity.
+Add logging (morgan) and a health endpoint that reports DB connectivity.
 
-Useful Commands
+# Useful Commands
+
 bash
-# start frontend dev server
+# frontend dev server
 npm run dev
 
-# start backend (if separate)
+# backend (if separate)
 node server.js
+# or with nodemon
+npx nodemon src/server.js
 
 # run seed script
 node scripts/seed/employees.js
@@ -152,4 +189,16 @@ mongodump --uri="$MONGODB_URI/$DB_NAME" --out=./backups/$(date +%F)
 
 # restore database
 mongorestore --uri="$MONGODB_URI" --nsInclude="$DB_NAME.*" ./backups/<date>
-Next Steps
+
+# Security, Backups, and maintenance
+Passwords: always hash with bcrypt before storing; never return password hashes in responses.
+
+Access: use least‑privilege DB users and restrict IP access.
+
+TLS: enable TLS for production DB connections (Atlas or self‑managed).
+
+Secrets: keep .env out of source control; use a secrets manager for production.
+
+Backups: schedule mongodump or use Atlas automated backups and test restores regularly.
+
+Monitoring: track disk usage, slow queries, and index health.
