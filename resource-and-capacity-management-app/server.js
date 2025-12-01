@@ -3,7 +3,7 @@ const { MongoClient, ServerApiVersion } = require('mongodb');
 const cors = require('cors');
 
 const app = express();
-const port = process.env.PORT || 3001; // Change to propper port if needed
+const port = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors());
@@ -11,7 +11,7 @@ app.use(express.json());
 
 // MongoDB configuration
 const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017';
-const dbName = process.env.DB_NAME || 'resource_management';
+const dbName = process.env.DB_NAME || 'ResourceManagementAPP_DB';
 
 const client = new MongoClient(uri, {
   serverApi: {
@@ -23,39 +23,37 @@ const client = new MongoClient(uri, {
 
 let db;
 
-// Connect to MongoDB
-async function connectDB() {
-  try {
-    await client.connect();
-    db = client.db(dbName);
-    console.log('Connected to MongoDB successfully');
-    
-    // Test connection
-    await db.command({ ping: 1 });
-    console.log('MongoDB connection verified');
-  } catch (error) {
-    console.error('MongoDB connection error:', error);
-    process.exit(1);
-  }
+// Ensure requests wait for DB readiness
+function requireDB(req, res, next) {
+  if (!db) return res.status(503).json({ error: 'Database not connected yet' });
+  req.db = db;
+  next();
 }
 
-// Initialize database connection
-connectDB();
+async function connectDB() {
+  await client.connect();
+  db = client.db(dbName);
+  await db.command({ ping: 1 });
+  console.log(`Connected to MongoDB: ${dbName}`);
+}
 
-// Health check endpoint
+// Health check (doesn’t require DB)
 app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
+  res.json({
+    status: 'ok',
     timestamp: new Date().toISOString(),
     database: db ? 'connected' : 'disconnected'
   });
 });
 
-// Example API route to fetch data
+// Routes that require the DB
+app.use(requireDB);
+
+// Data sample routes (replace with real usage or remove)
 app.get('/api/data', async (req, res) => {
   try {
-    const collection = db.collection('your_collection');
-    const results = await collection.find({}).toArray();
+    const collection = req.db.collection('account'); // use a real collection
+    const results = await collection.find({}).limit(50).toArray();
     res.json(results);
   } catch (error) {
     console.error('Error fetching data:', error);
@@ -63,26 +61,19 @@ app.get('/api/data', async (req, res) => {
   }
 });
 
-// Example API route to add data
 app.post('/api/data', async (req, res) => {
   try {
     const { name, value } = req.body;
-    
-    if (!name || !value) {
+    if (!name || value === undefined) {
       return res.status(400).json({ error: 'Name and value are required' });
     }
-
-    const collection = db.collection('your_collection');
-    const result = await collection.insertOne({ 
-      name, 
+    const result = await req.db.collection('account').insertOne({
+      name,
       value,
-      createdAt: new Date()
+      createdAt: new Date(),
+      updatedAt: new Date()
     });
-    
-    res.status(201).json({ 
-      message: 'Data added successfully', 
-      id: result.insertedId 
-    });
+    res.status(201).json({ message: 'Data added successfully', id: result.insertedId });
   } catch (error) {
     console.error('Error inserting data:', error);
     res.status(500).json({ error: 'Error inserting data' });
@@ -92,8 +83,7 @@ app.post('/api/data', async (req, res) => {
 // Resources endpoints
 app.get('/api/resources', async (req, res) => {
   try {
-    const collection = db.collection('resources');
-    const resources = await collection.find({}).toArray();
+    const resources = await req.db.collection('resources').find({}).toArray();
     res.json(resources);
   } catch (error) {
     console.error('Error fetching resources:', error);
@@ -103,16 +93,13 @@ app.get('/api/resources', async (req, res) => {
 
 app.post('/api/resources', async (req, res) => {
   try {
-    const collection = db.collection('resources');
-    const result = await collection.insertOne({
-      ...req.body,
+    const body = req.body || {};
+    const result = await req.db.collection('resources').insertOne({
+      ...body,
       createdAt: new Date(),
       updatedAt: new Date()
     });
-    res.status(201).json({ 
-      message: 'Resource created successfully', 
-      id: result.insertedId 
-    });
+    res.status(201).json({ message: 'Resource created successfully', id: result.insertedId });
   } catch (error) {
     console.error('Error creating resource:', error);
     res.status(500).json({ error: 'Error creating resource' });
@@ -122,8 +109,7 @@ app.post('/api/resources', async (req, res) => {
 // Activities endpoints
 app.get('/api/activities', async (req, res) => {
   try {
-    const collection = db.collection('activities');
-    const activities = await collection.find({}).toArray();
+    const activities = await req.db.collection('activities').find({}).toArray();
     res.json(activities);
   } catch (error) {
     console.error('Error fetching activities:', error);
@@ -133,16 +119,13 @@ app.get('/api/activities', async (req, res) => {
 
 app.post('/api/activities', async (req, res) => {
   try {
-    const collection = db.collection('activities');
-    const result = await collection.insertOne({
-      ...req.body,
+    const body = req.body || {};
+    const result = await req.db.collection('activities').insertOne({
+      ...body,
       createdAt: new Date(),
       updatedAt: new Date()
     });
-    res.status(201).json({ 
-      message: 'Activity created successfully', 
-      id: result.insertedId 
-    });
+    res.status(201).json({ message: 'Activity created successfully', id: result.insertedId });
   } catch (error) {
     console.error('Error creating activity:', error);
     res.status(500).json({ error: 'Error creating activity' });
@@ -155,13 +138,28 @@ app.use((req, res) => {
 });
 
 // Graceful shutdown
-process.on('SIGINT', async () => {
-  console.log('\nClosing MongoDB connection...');
-  await client.close();
-  process.exit(0);
-});
+async function shutdown(code = 0) {
+  try {
+    console.log('Closing MongoDB connection...');
+    await client.close();
+  } catch (e) {
+    console.error('Error during shutdown:', e);
+  } finally {
+    process.exit(code);
+  }
+}
+process.on('SIGINT', () => shutdown(0));
+process.on('SIGTERM', () => shutdown(0));
 
-// Start server
-app.listen(port, () => {
-  console.log(`API server running on port ${port}`);
-});
+// Start server after DB connects
+(async () => {
+  try {
+    await connectDB();
+    app.listen(port, () => {
+      console.log(`API server running on port ${port}`);
+    });
+  } catch (error) {
+    console.error('MongoDB connection error:', error);
+    await shutdown(1);
+  }
+})();
