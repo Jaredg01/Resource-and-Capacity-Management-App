@@ -7,7 +7,11 @@ const app = express();
 const port = process.env.PORT || 3001; // Change to propper port if needed
 
 // Middleware
-app.use(cors());
+const corsOptions = {
+  origin: process.env.FRONTEND_URL || '*',
+  credentials: true
+};
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // MongoDB configuration
@@ -90,6 +94,86 @@ app.post('/api/data', async (req, res) => {
   }
 });
 
+// Authentication endpoints
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+
+    const collection = db.collection('users');
+    const user = await collection.findOne({ email: email.toLowerCase() });
+    
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Simple password check (in production, use bcrypt to hash passwords)
+    if (user.password !== password) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Don't send password back to client
+    const { password: _, ...userWithoutPassword } = user;
+    
+    res.json({ 
+      message: 'Login successful',
+      user: userWithoutPassword
+    });
+  } catch (error) {
+    console.error('Error during login:', error);
+    res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+// Register new user
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { email, password, firstName, lastName, title, department, role } = req.body;
+    
+    if (!email || !password || !firstName || !lastName) {
+      return res.status(400).json({ error: 'Required fields missing' });
+    }
+
+    const collection = db.collection('users');
+    
+    // Check if user already exists
+    const existingUser = await collection.findOne({ email: email.toLowerCase() });
+    if (existingUser) {
+      return res.status(409).json({ error: 'User already exists' });
+    }
+
+    // Create new user (in production, hash the password with bcrypt)
+    const newUser = {
+      email: email.toLowerCase(),
+      password: password, // TODO: Hash this in production
+      firstName,
+      lastName,
+      title: title || '',
+      department: department || '',
+      role: role || 'user',
+      permissions: [],
+      status: true,
+      createdAt: new Date()
+    };
+
+    const result = await collection.insertOne(newUser);
+    
+    // Don't send password back
+    const { password: _, ...userWithoutPassword } = newUser;
+    
+    res.status(201).json({ 
+      message: 'User registered successfully',
+      user: { ...userWithoutPassword, _id: result.insertedId }
+    });
+  } catch (error) {
+    console.error('Error during registration:', error);
+    res.status(500).json({ error: 'Registration failed' });
+  }
+});
+
 // Resources endpoints
 app.get('/api/resources', async (req, res) => {
   try {
@@ -163,6 +247,8 @@ process.on('SIGINT', async () => {
 });
 
 // Start server
-app.listen(port, () => {
-  console.log(`API server running on port ${port}`);
+const host = process.env.HOST || '0.0.0.0';
+app.listen(port, host, () => {
+  console.log(`API server running on ${host}:${port}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 });
