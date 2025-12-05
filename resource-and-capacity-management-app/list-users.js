@@ -23,6 +23,7 @@ async function listUsers() {
     console.log(`\nFound ${users.length} user(s) in the database:\n`);
     users.forEach((user, index) => {
       console.log(`User ${index + 1}:`);
+      console.log(`  Username: ${user.username || 'N/A'}`);
       console.log(`  Email: ${user.email}`);
       console.log(`  Name: ${user.firstName} ${user.lastName}`);
       console.log(`  Role: ${user.role || 'N/A'}`);

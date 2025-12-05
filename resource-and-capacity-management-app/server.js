@@ -16,7 +16,7 @@ app.use(express.json());
 
 // MongoDB configuration
 const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017';
-const dbName = process.env.DB_NAME || 'resource_management';
+const dbName = process.env.DB_NAME || 'ResourceManagementAPP_DB';
 
 const client = new MongoClient(uri, {
   serverApi: {
@@ -34,6 +34,7 @@ async function connectDB() {
     await client.connect();
     db = client.db(dbName);
     console.log('Connected to MongoDB successfully');
+    console.log('Using database:', dbName);
     
     // Test connection
     await db.command({ ping: 1 });
@@ -103,20 +104,41 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(400).json({ error: 'Username and password are required' });
     }
 
-    const collection = db.collection('users');
-    const user = await collection.findOne({ username: username.toLowerCase() });
+    const collection = db.collection('account');
+    console.log('Searching for username:', username);
+    console.log('In collection: account');
+    console.log('Database:', db.databaseName);
+    
+    const user = await collection.findOne({ 'account.username': username });
+    console.log('Query result:', user ? 'User found' : 'User NOT found');
     
     if (!user) {
+      // Try to see if there are any users at all
+      const count = await collection.countDocuments();
+      console.log('Total documents in account collection:', count);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
+    console.log('User found:', user.account.username, 'checking password...');
+    
     // Simple password check (in production, use bcrypt to hash passwords)
-    if (user.password !== password) {
+    if (user.account.password !== password) {
+      console.log('Password mismatch for user:', username);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
+    
+    console.log('Login successful for:', username);
 
     // Don't send password back to client
-    const { password: _, ...userWithoutPassword } = user;
+    const userWithoutPassword = {
+      _id: user._id,
+      emp_id: user.emp_id,
+      account: {
+        username: user.account.username,
+        acc_type_id: user.account.acc_type_id,
+        account_id: user.account.account_id
+      }
+    };
     
     res.json({ 
       message: 'Login successful',
@@ -137,7 +159,7 @@ app.post('/api/auth/register', async (req, res) => {
       return res.status(400).json({ error: 'Required fields missing' });
     }
 
-    const collection = db.collection('users');
+    const collection = db.collection('account');
     
     // Check if user already exists
     const existingUser = await collection.findOne({ email: email.toLowerCase() });

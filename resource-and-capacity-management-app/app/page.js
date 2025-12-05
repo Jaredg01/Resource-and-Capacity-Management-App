@@ -53,12 +53,6 @@ export default function LoginPage() {
                         <h3 className="text-xl font-bold text-[#017ACB] whitespace-nowrap leading-tight" style={{ fontFamily: 'Outfit, sans-serif' }}>Capstone Dynamics</h3>
                         <h4 className="text-sm font-bold text-black whitespace-nowrap leading-tight mt-1" style={{ fontFamily: 'Outfit, sans-serif' }}>Resource & Capacity Management</h4>
                     </div>
-                    <button
-                        onClick={() => router.push('/')}
-                        className="text-gray-500 hover:text-gray-700 text-2xl cursor-pointer flex-shrink-0 w-8 h-8 flex items-center justify-center"
-                    >
-                        ×
-                    </button>
                 </div>
                 
                 <form onSubmit={handleLogin} className="space-y-4">
@@ -102,13 +96,6 @@ export default function LoginPage() {
                     </div>
                     
                     <div className="flex gap-3">
-                        <button
-                            type="button"
-                            onClick={() => router.push('/')}
-                            className="flex-1 px-4 py-2 text-gray-700 border border-gray-500 rounded-lg hover:bg-gray-300 cursor-pointer transition"
-                        >
-                            Cancel
-                        </button>
                         <button
                             type="submit"
                             className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer transition"

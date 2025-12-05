@@ -59,7 +59,7 @@ export default function DashboardPage() {
               </h2>
             </div>
             <div className="flex items-center gap-4">
-              <span className="text-white font-semibold" style={styles.outfitFont}>{user.firstName} {user.lastName}</span>
+              <span className="text-white font-semibold" style={styles.outfitFont}>{user.account?.username || 'User'}</span>
               <button
                 onClick={handleLogout}
                 className="w-10 h-10 rounded-full bg-white flex items-center justify-center overflow-hidden hover:opacity-90 transition cursor-pointer"
@@ -73,7 +73,7 @@ export default function DashboardPage() {
                   />
                 ) : (
                   <span className="text-[#017ACB] font-bold text-lg">
-                    {user.firstName.charAt(0)}{user.lastName.charAt(0)}
+                    {user.account?.username?.charAt(0).toUpperCase() || 'U'}
                   </span>
                 )}
               </button>
@@ -85,11 +85,11 @@ export default function DashboardPage() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Welcome Message */}
-        <h2 className="text-2xl text-gray-900 mb-6" style={styles.outfitFont}>Welcome back, {user.firstName} {user.lastName}</h2>
+        <h2 className="text-2xl text-gray-900 mb-6" style={styles.outfitFont}>Welcome back, {user.account?.username || 'User'}</h2>
 
         {/* filter switch */}
         <div>
-          <button className="p-1 w-15 border border-gray-300 text-center cursor-pointer text-gray-600" style={styles.outfitFont}>All</button>
+          <button className="p-1 w-15 border bg-gray-200 border-gray-300 text-center cursor-pointer text-gray-600" style={styles.outfitFont}>All</button>
           <button className="p-1 w-15 border border-gray-300 text-center cursor-pointer text-gray-600" style={styles.outfitFont}>Mine</button>
         </div>
 
@@ -112,39 +112,39 @@ export default function DashboardPage() {
 
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 transition">
             <p className="text-gray-600 text-sm text-right" style={styles.outfitFont}>Initiatives in Back Log</p>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2" style={styles.outfitFont}>📆 1</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2" style={styles.outfitFont}>📋 1</h3>
           </div>
         </div>
 
         {/* navigation */}
         <div className="grid grid-cols-3 gap-6">
           <div className="bg-white rounded-lg shadow-sm border text-center border-gray-200 p-6 hover:shadow-md hover:border-gray-500 cursor-pointer transition">
-            <div className="text-4xl mb-2 text-gray-700">place icon</div> {/* Replace with icon */}
+            <img src="/capacitysummaryicon.png" alt="graph icon" className="mx-auto mb-4 h-12 w-12"/>
             <h3 className="text-lg font-semibold text-gray-900 mb-2" style={styles.outfitFont}>Capacity Summary</h3>
           </div>
 
           <div className="bg-white rounded-lg shadow-sm border text-center border-gray-200 p-6 hover:shadow-md hover:border-gray-500 cursor-pointer transition">
-            <div className="text-4xl mb-2 text-gray-700">place icon</div> {/* Replace with icon */}
+            <img src="/resourcesicon.png" alt="graph icon" className="mx-auto mb-4 h-12 w-12"/>
             <h3 className="text-lg font-semibold text-gray-900 mb-2" style={styles.outfitFont}>Resources</h3>
           </div>
 
           <div className="bg-white rounded-lg shadow-sm border text-center border-gray-200 p-6 hover:shadow-md hover:border-gray-500 cursor-pointer transition">
-            <div className="text-4xl mb-2 text-gray-700">place icon</div> {/* Replace with icon */}
+            <img src="/initiativesicon.png" alt="graph icon" className="mx-auto mb-4 h-12 w-12"/>
             <h3 className="text-lg font-semibold text-gray-900 mb-2" style={styles.outfitFont}>Initiatives</h3>
           </div>
 
           <div className="bg-white rounded-lg shadow-sm border text-center border-gray-200 p-6 hover:shadow-md hover:border-gray-500 cursor-pointer transition">
-            <div className="text-4xl mb-2 text-gray-700">place icon</div> {/* Replace with icon */}
+            <img src="/assignmentsicon.png" alt="graph icon" className="mx-auto mb-4 h-12 w-12"/>
             <h3 className="text-lg font-semibold text-gray-900 mb-2" style={styles.outfitFont}>Assignments</h3>
           </div>
 
           <div className="bg-white rounded-lg shadow-sm border text-center border-gray-200 p-6 hover:shadow-md hover:border-gray-500 cursor-pointer transition">
-            <div className="text-4xl mb-2 text-gray-700">place icon</div> {/* Replace with icon */}
+            <img src="/calendaricon.png" alt="graph icon" className="mx-auto mb-4 h-12 w-12"/>
             <h3 className="text-lg font-semibold text-gray-900 mb-2" style={styles.outfitFont}>Calendar</h3>
           </div>
 
           <div className="bg-white rounded-lg shadow-sm border text-center border-gray-200 p-6 hover:shadow-md hover:border-gray-500 cursor-pointer transition">
-            <div className="text-4xl mb-2 text-gray-700">place icon</div> {/* Replace with icon */}
+            <img src="/reporticon.png" alt="graph icon" className="mx-auto mb-4 h-12 w-12"/>
             <h3 className="text-lg font-semibold text-gray-900 mb-2" style={styles.outfitFont}>Report</h3>
           </div>
         </div>
