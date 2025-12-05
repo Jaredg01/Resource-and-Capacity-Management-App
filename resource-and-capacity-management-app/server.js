@@ -246,7 +246,7 @@ async function shutdown(code = 0) {
 process.on('SIGINT', () => shutdown(0));
 process.on('SIGTERM', () => shutdown(0));
 
-<<<<<<<<< Temporary merge branch 1
+
 // Start server after DB connects
 (async () => {
   try {
@@ -259,11 +259,11 @@ process.on('SIGTERM', () => shutdown(0));
     await shutdown(1);
   }
 })();
-=========
+
 // Start server
 const host = process.env.HOST || '0.0.0.0';
 app.listen(port, host, () => {
   console.log(`API server running on ${host}:${port}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 });
->>>>>>>>> Temporary merge branch 2
+
