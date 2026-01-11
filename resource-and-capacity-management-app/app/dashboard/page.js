@@ -58,12 +58,12 @@ export default function DashboardPage() {
                 Management Planner
               </h2>
             </div>
-
+{/* Username next to profile button picture */}
             <div className="flex items-center gap-4">
               <span className="text-white font-semibold" style={styles.outfitFont}>
                 {user?.username || ''}
               </span>
-
+{/* Profile button */}
               <button
                 onClick={handleLogout}
                 className="w-10 h-10 rounded-full bg-white flex items-center justify-center overflow-hidden hover:opacity-90 transition cursor-pointer"
