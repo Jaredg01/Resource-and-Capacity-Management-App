@@ -81,17 +81,16 @@ export default function DashboardPage() {
                 {user?.username || ''}
               </span>
 
-              {/* Logout button styled as a profile circle */}
-              <button
-                onClick={handleLogout}
-                className="w-10 h-10 rounded-full bg-white flex items-center justify-center overflow-hidden hover:opacity-90 transition cursor-pointer"
-                title="Logout"
-              >
-                <span className="text-[#017ACB] font-bold text-lg">
-                  {/* First letter of username, capitalized */}
-                  {user?.username?.charAt(0)?.toUpperCase() || ''}
-                </span>
-              </button>
+            {/* Profile circle button → navigates to Profile/view-profile */}
+            <Link
+              href="/Profile/view-profile"
+              className="w-10 h-10 rounded-full bg-white flex items-center justify-center overflow-hidden hover:opacity-90 transition cursor-pointer"
+              title="View Profile"
+          >
+            <span className="text-[#017ACB] font-bold text-lg">
+                {user?.username?.charAt(0)?.toUpperCase() || ''}
+            </span>
+          </Link>
             </div>
           </div>
         </div>
