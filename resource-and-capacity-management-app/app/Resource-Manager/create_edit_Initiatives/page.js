@@ -15,7 +15,7 @@ export default function InitiativesPage() {
      ---------------------------------------------------------
      - user: stores logged‑in user info from localStorage
      - activeTab: controls filtering (all / mine / completed)
-     - initiatives: raw dataset (mock for now, DB later)
+     - initiatives: raw dataset (from DB via API)
      - filteredInitiatives: table-ready filtered list
   --------------------------------------------------------- */
   const [user, setUser] = useState(null);
@@ -42,88 +42,34 @@ export default function InitiativesPage() {
   }, [router]);
 
   /* ---------------------------------------------------------
-     MOCK DATA (TEMPORARY UNTIL DB INTEGRATION)
+     DATA LOADING (FROM MONGODB VIA API)
      ---------------------------------------------------------
      Purpose:
-     - Provides placeholder initiative data for UI development
-     - Will be replaced with MongoDB fetch once backend is ready
+     - Fetches initiative data from backend API
+     - Replaces previous mock data block
+     - Returns all initiatives; filtering is client-side
   --------------------------------------------------------- */
   useEffect(() => {
-    const mockData = [
-      {
-        id: 1,
-        project: 'CDA Replacement',
-        category: 'Strategic',
-        lead: 'Charlotte Nguyen',
-        status: 'Backlog',
-        requestor: 'Sophia Grant',
-        requestor_vp: 'Lauren Mitchell',
-        requesting_dept: 'IT',
-        completion_date: '',
-        target_period: 'Q1 2026',
-        description: 'Replace legacy CDA system with vendor-supported streaming architecture.',
-        resource_consideration: 'Requires 2 backend engineers and 1 data architect.'
-      },
-      {
-        id: 2,
-        project: 'Marketplace Expansion',
-        category: 'Strategic',
-        lead: 'Charlotte Nguyen',
-        status: 'Completed',
-        requestor: 'Jane Kraft',
-        requestor_vp: 'Victoria Hayes',
-        requesting_dept: 'Data & Analytics Office',
-        completion_date: 'Dec-2025',
-        target_period: 'Jan–Dec 2025',
-        description: 'Expand Marketplace content and automate onboarding workflows.',
-        resource_consideration: 'Completed using existing D&A team capacity.'
-      },
-      {
-        id: 3,
-        project: 'Valuation Line - Claims',
-        category: 'Strategic',
-        lead: 'Charlotte Nguyen',
-        status: 'Completed',
-        requestor: 'Greg Walters',
-        requestor_vp: 'Jonathan Reid',
-        requesting_dept: 'Finance',
-        completion_date: 'Jun-2025',
-        target_period: 'Apr–Jun 2025',
-        description: 'Implement matrix logic for valuation line reporting in claims.',
-        resource_consideration: 'Requires actuarial SME and 1 reporting analyst.'
-      },
-      {
-        id: 4,
-        project: 'Data Governance Portal',
-        category: 'Baseline',
-        lead: 'Jackson Lee',
-        status: 'In Process',
-        requestor: 'Amira Patel',
-        requestor_vp: 'David Chen',
-        requesting_dept: 'Compliance',
-        completion_date: '',
-        target_period: 'Feb–Aug 2026',
-        description: 'Build centralized portal for data governance policies and approvals.',
-        resource_consideration: 'Needs 1 frontend dev, 1 backend dev, and 1 UX designer.'
-      },
-      {
-        id: 5,
-        project: 'Claims Audit Automation',
-        category: 'Discretionary',
-        lead: 'Jackson Lee',
-        status: 'On Hold',
-        requestor: 'Liam Brooks',
-        requestor_vp: 'Natalie Singh',
-        requesting_dept: 'Audit',
-        completion_date: '',
-        target_period: 'TBD',
-        description: 'Automate sampling and audit trail generation for claims review.',
-        resource_consideration: 'Pending approval for 2 automation engineers.'
-      }
-    ];
+    if (!user) return;
 
-    setInitiatives(mockData);
-  }, []);
+    const fetchInitiatives = async () => {
+      try {
+        const res = await fetch('/api/Resource-Manager/Initiatives');
+        const data = await res.json();
+
+        const mapped = data.map((item) => ({
+          ...item,
+          id: item._id
+        }));
+
+        setInitiatives(mapped);
+      } catch (err) {
+        console.error('Initiatives fetch error:', err);
+      }
+    };
+
+    fetchInitiatives();
+  }, [user]);
 
   /* ---------------------------------------------------------
      FILTERING LOGIC
@@ -131,11 +77,12 @@ export default function InitiativesPage() {
      Purpose:
      - Applies tab-based filtering to initiatives
      - "all"       → all non-completed initiatives
-     - "mine"      → initiatives where user is the lead
+     - "mine"      → initiatives where user is the lead (non-completed)
      - "completed" → completed initiatives only
 
      Notes:
-     - This logic will remain identical when DB data replaces mock data
+     - Uses leader_id (emp_id) from backend
+     - user.id is emp_id from profile/login flow
   --------------------------------------------------------- */
   useEffect(() => {
     if (!user) return;
@@ -144,7 +91,7 @@ export default function InitiativesPage() {
 
     if (activeTab === 'mine') {
       filtered = filtered.filter(
-        (i) => i.lead === user.username && i.status !== 'Completed'
+        (i) => i.leader_id === user.id && i.status !== 'Completed'
       );
     } else if (activeTab === 'completed') {
       filtered = filtered.filter((i) => i.status === 'Completed');
@@ -348,14 +295,18 @@ export default function InitiativesPage() {
                   </td>
 
                   {/* Data Columns */}
-                  <td className="px-4 py-2 border text-sm text-black" style={styles.outfitFont}>{item.project}</td>
+                  <td className="px-4 py-2 border text-sm text-black" style={styles.outfitFont}>{item.project_name}</td>
                   <td className="px-4 py-2 border text-sm text-black" style={styles.outfitFont}>{item.category}</td>
-                  <td className="px-4 py-2 border text-sm text-black" style={styles.outfitFont}>{item.lead}</td>
+                  <td className="px-4 py-2 border text-sm text-black" style={styles.outfitFont}>{item.leader}</td>
                   <td className="px-4 py-2 border text-sm text-black" style={styles.outfitFont}>{item.status}</td>
                   <td className="px-4 py-2 border text-sm text-black" style={styles.outfitFont}>{item.requestor}</td>
                   <td className="px-4 py-2 border text-sm text-black" style={styles.outfitFont}>{item.requestor_vp}</td>
                   <td className="px-4 py-2 border text-sm text-black" style={styles.outfitFont}>{item.requesting_dept}</td>
-                  <td className="px-4 py-2 border text-sm text-black" style={styles.outfitFont}>{item.completion_date}</td>
+                  <td className="px-4 py-2 border text-sm text-black" style={styles.outfitFont}>
+                    {item.completion_date
+                      ? new Date(item.completion_date).toLocaleDateString()
+                      : ''}
+                  </td>
                   <td className="px-4 py-2 border text-sm text-black" style={styles.outfitFont}>{item.target_period}</td>
                   <td className="px-4 py-2 border text-sm text-black" style={styles.outfitFont}>{item.description}</td>
                   <td className="px-4 py-2 border text-sm text-black" style={styles.outfitFont}>{item.resource_consideration}</td>
