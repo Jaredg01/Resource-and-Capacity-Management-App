@@ -4,29 +4,37 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
+/* ---------------------------------------------------------
+   FORGOT PASSWORD PAGE (CLIENT COMPONENT)
+   - Displays modal-style UI for requesting a password reset
+   - Sends username to backend API for validation
+   - Shows success state when request is accepted
+   - Clicking outside modal returns user to login page
+--------------------------------------------------------- */
 export default function ForgotPasswordPage() {
 
-    // Stores the username entered by the user
+    /* ---------------------------------------------------------
+       STATE MANAGEMENT
+       ---------------------------------------------------------
+       - username: stores user input
+       - submitted: toggles between form view and success view
+       - router: used for navigation (closing modal, redirecting)
+    --------------------------------------------------------- */
     const [username, setUsername] = useState('');
-
-    // Tracks whether the reset request was successfully submitted
     const [submitted, setSubmitted] = useState(false);
-
-    // Next.js router for navigation (closing modal, redirecting)
     const router = useRouter();
 
-    /**
-     * Handles the form submission for requesting a password reset.
-     * - Prevents default form behavior
-     * - Sends username to backend API
-     * - Displays success or error feedback
-     */
+    /* ---------------------------------------------------------
+       HANDLE FORM SUBMISSION
+       - Prevents default form behavior
+       - Sends POST request to backend API
+       - Displays success or error feedback
+    --------------------------------------------------------- */
     const handleSubmit = async (e) => {
         e.preventDefault();
 
         try {
-            // POST request to backend API route
-            const response = await fetch('/api/Resource-Manager/auth/forgot-password', {   // UPDATED ROUTE
+            const response = await fetch('/api/Resource-Manager/auth/forgot-password', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username })
@@ -34,17 +42,16 @@ export default function ForgotPasswordPage() {
 
             const data = await response.json();
 
-            // Backend indicates username was not found
+            // Username not found
             if (!data.success) {
                 alert("Username not found. Please retype the correct username.");
                 return;
             }
 
-            // Display success UI
+            // Show success UI
             setSubmitted(true);
 
         } catch (error) {
-            // Network or server error
             console.error('Password reset error:', error);
             alert('Failed to send reset instructions. Please try again.');
         }
@@ -52,24 +59,28 @@ export default function ForgotPasswordPage() {
 
     return (
         <div
-            // Full‑screen modal overlay
+            /* ---------------------------------------------------------
+               MODAL OVERLAY
+               - Full-screen blurred background
+               - Clicking outside modal returns to login
+            --------------------------------------------------------- */
             className="fixed inset-0 bg-white/30 backdrop-blur-sm flex items-center justify-center z-50"
-
-            // Clicking outside the modal closes it and returns to login
             onClick={() => router.push('/')}
         >
             <div
-                // Modal container
+                /* ---------------------------------------------------------
+                   MODAL CONTAINER
+                   - White card with padding and rounded corners
+                   - Clicking inside prevents modal from closing
+                --------------------------------------------------------- */
                 className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md m-4 border border-gray-200"
-
-                // Prevent modal from closing when clicking inside
                 onClick={(e) => e.stopPropagation()}
             >
 
                 {/* ---------------- HEADER SECTION ---------------- */}
                 <div className="flex justify-between items-center mb-4">
 
-                    {/* Application logo */}
+                    {/* Logo */}
                     <img src="/CapstoneDynamicsLogo.png" alt="Logo" className="h-20 flex-shrink-0" />
 
                     {/* App title + subtitle */}
@@ -82,7 +93,7 @@ export default function ForgotPasswordPage() {
                         </h4>
                     </div>
 
-                    {/* Close button (returns to login) */}
+                    {/* Close button */}
                     <button
                         onClick={() => router.push('/')}
                         className="text-gray-500 hover:text-gray-700 text-2xl cursor-pointer flex-shrink-0 w-8 h-8 flex items-center justify-center"
@@ -94,13 +105,13 @@ export default function ForgotPasswordPage() {
                 {/* ---------------- FORM SECTION ---------------- */}
                 {!submitted ? (
                     <>
-                        {/* Page title + instructions */}
+                        {/* Title + instructions */}
                         <h2 className="text-2xl font-bold text-gray-900 mb-2">Forgot Password</h2>
                         <p className="text-sm text-gray-600 mb-6">
                             Enter your username and we’ll send reset instructions.
                         </p>
 
-                        {/* Username input form */}
+                        {/* Form */}
                         <form onSubmit={handleSubmit} className="space-y-4">
 
                             {/* Username field */}
@@ -123,7 +134,7 @@ export default function ForgotPasswordPage() {
                             {/* Action buttons */}
                             <div className="flex gap-3">
 
-                                {/* Return to login */}
+                                {/* Back to login */}
                                 <Link
                                     href="/"
                                     className="flex-1 px-4 py-2 text-center text-gray-700 border border-gray-500 rounded-lg hover:bg-gray-100 transition"
@@ -131,7 +142,7 @@ export default function ForgotPasswordPage() {
                                     Back to Login
                                 </Link>
 
-                                {/* Submit reset request */}
+                                {/* Submit */}
                                 <button
                                     type="submit"
                                     className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
@@ -160,7 +171,7 @@ export default function ForgotPasswordPage() {
                             Reset instructions have been sent for <strong>{username}</strong>
                         </p>
 
-                        {/* Return to login */}
+                        {/* Back to login */}
                         <Link
                             href="/"
                             className="inline-block px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"

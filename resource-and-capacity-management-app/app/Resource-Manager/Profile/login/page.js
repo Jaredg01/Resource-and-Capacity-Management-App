@@ -5,44 +5,41 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 /* ---------------------------------------------------------
-   Login Page Component
-   ---------------------------------------------------------
-   - Handles user authentication
-   - Sends credentials to backend API
+   LOGIN PAGE COMPONENT
+   - Handles user authentication workflow
+   - Sends credentials to backend login API
    - Stores returned user object in localStorage
-   - Redirects to dashboard on success
+   - Redirects to dashboard on successful login
 --------------------------------------------------------- */
 export default function LoginPage() {
 
-    /* -----------------------------------------------------
-       Local State
-       -----------------------------------------------------
-       username → stores typed username
-       password → stores typed password
-    ----------------------------------------------------- */
+    /* ---------------------------------------------------------
+       LOCAL STATE
+       - username: stores typed username
+       - password: stores typed password
+       - router: used for navigation (closing modal, redirecting)
+    --------------------------------------------------------- */
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
-
     const router = useRouter();
 
-    /* -----------------------------------------------------
-       handleLogin
-       -----------------------------------------------------
+    /* ---------------------------------------------------------
+       HANDLE LOGIN
        - Prevents default form submission
        - Sends POST request to backend login API
-       - If successful:
-           → stores user object in localStorage
-           → redirects to dashboard
-       - If failed:
-           → displays error alert
-    ----------------------------------------------------- */
+       - On success:
+           • stores user object in localStorage
+           • redirects to dashboard
+       - On failure:
+           • displays error alert
+    --------------------------------------------------------- */
     const handleLogin = async (e) => {
         e.preventDefault();
 
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-            const response = await fetch(`${apiUrl}/api/Resource-Manager/auth/login`, {   // UPDATED ROUTE
+            const response = await fetch(`${apiUrl}/api/Resource-Manager/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, password })
@@ -58,7 +55,7 @@ export default function LoginPage() {
             // Store only what backend returns
             localStorage.setItem('user', JSON.stringify(data.user));
 
-            router.push('/Resource-Manager/dashboard');   // UPDATED ROUTE
+            router.push('/Resource-Manager/dashboard');
 
         } catch (error) {
             console.error('Login error:', error);
@@ -66,17 +63,16 @@ export default function LoginPage() {
         }
     };
 
-    /* -----------------------------------------------------
-       Render
-       -----------------------------------------------------
+    /* ---------------------------------------------------------
+       RENDER
        - Fullscreen modal-style login container
-       - Click outside closes and returns to home
+       - Clicking outside closes modal and returns to home
        - Includes:
-           → Logo + App Title
-           → Username + Password fields
-           → Forgot Password link
-           → Cancel + Sign In buttons
-    ----------------------------------------------------- */
+           • Logo + App Title
+           • Username + Password fields
+           • Forgot Password link
+           • Cancel + Sign In buttons
+    --------------------------------------------------------- */
     return (
         <div
             className="fixed inset-0 bg-white/30 backdrop-blur-sm flex items-center justify-center z-50"
@@ -88,8 +84,7 @@ export default function LoginPage() {
             >
 
                 {/* -------------------------------------------------
-                    Header Section
-                    -------------------------------------------------
+                    HEADER SECTION
                     - Displays logo and app name
                     - Includes close button (returns to home)
                 ------------------------------------------------- */}
@@ -120,8 +115,7 @@ export default function LoginPage() {
                 </div>
 
                 {/* -------------------------------------------------
-                    Login Form
-                    -------------------------------------------------
+                    LOGIN FORM
                     - Username + Password inputs
                     - Forgot password link
                     - Cancel + Sign In buttons
@@ -159,7 +153,7 @@ export default function LoginPage() {
                     {/* Forgot Password Link */}
                     <div className="text-right">
                         <Link
-                            href="/Resource-Manager/Profile/forgot-password"   // unchanged unless you moved it
+                            href="/Resource-Manager/Profile/forgot-password"
                             className="text-sm text-blue-600 hover:text-blue-800"
                         >
                             Forgot Password?
