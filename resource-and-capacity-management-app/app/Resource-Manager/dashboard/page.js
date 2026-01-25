@@ -4,52 +4,26 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-/* ---------------------------------------------------------
-   SHARED STYLE OBJECT
-   - Centralizes typography styling for consistency
-   - Applied across headings, labels, and UI elements
---------------------------------------------------------- */
 const styles = {
   outfitFont: { fontFamily: 'Outfit, sans-serif' }
 };
 
-/* ---------------------------------------------------------
-   DASHBOARD PAGE
-   - Loads logged‑in user from localStorage
-   - Fetches summary counts (All / Mine)
-   - Displays header, summary cards, and navigation tiles
-   - Redirects to login if user is missing
---------------------------------------------------------- */
 export default function DashboardPage() {
 
-  /* ---------------------------------------------------------
-     STATE: LOGGED‑IN USER
-     - Loaded from localStorage on initial render
-     - If missing → redirect to login page
-  --------------------------------------------------------- */
   const [user, setUser] = useState(null);
 
-  /* ---------------------------------------------------------
-     STATE: DASHBOARD FILTER + SUMMARY DATA
-     - filter: "all" or "mine"
-     - summary: counts returned from backend API
-  --------------------------------------------------------- */
+  // ---------------------------------------------------------
+  // SUMMARY STATE (Planned removed)
+  // ---------------------------------------------------------
   const [filter, setFilter] = useState("all");
   const [summary, setSummary] = useState({
     active: 0,
-    planned: 0,
     hold: 0,
     backlog: 0
   });
 
   const router = useRouter();
 
-  /* ---------------------------------------------------------
-     EFFECT: LOAD USER FROM LOCALSTORAGE
-     - Runs once on mount
-     - Redirects to login if no user is stored
-     - Otherwise stores parsed user object in state
-  --------------------------------------------------------- */
   useEffect(() => {
     const userData = localStorage.getItem('user');
 
@@ -61,14 +35,6 @@ export default function DashboardPage() {
     setUser(JSON.parse(userData));
   }, [router]);
 
-  /* ---------------------------------------------------------
-     EFFECT: FETCH SUMMARY DATA WHEN FILTER OR USER CHANGES
-     - Calls backend summary API:
-         • filter=all
-         • filter=mine&username={username}
-     - Backend handles all DB logic and joins
-     - Updates summary card values
-  --------------------------------------------------------- */
   useEffect(() => {
     if (!user) return;
 
@@ -82,7 +48,14 @@ export default function DashboardPage() {
 
         const res = await fetch(url);
         const data = await res.json();
-        setSummary(data);
+
+        // Remove planned from API response
+        setSummary({
+          active: data.active,
+          hold: data.hold,
+          backlog: data.backlog
+        });
+
       } catch (err) {
         console.error("Summary fetch error:", err);
       }
@@ -91,10 +64,6 @@ export default function DashboardPage() {
     fetchSummary();
   }, [filter, user]);
 
-  /* ---------------------------------------------------------
-     LOADING STATE
-     - Shows a spinner while user data is being restored
-  --------------------------------------------------------- */
   if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -103,25 +72,14 @@ export default function DashboardPage() {
     );
   }
 
-  /* ---------------------------------------------------------
-     MAIN RENDER
-     - Header with branding + user info
-     - Filter buttons (All / Mine)
-     - Summary cards populated from backend
-     - Navigation tiles for app sections
-  --------------------------------------------------------- */
   return (
     <div className="min-h-screen bg-gray-50">
 
-      {/* -----------------------------------------------------
-          HEADER SECTION
-      ----------------------------------------------------- */}
+      {/* HEADER */}
       <header className="bg-[#017ACB] shadow-sm w-full">
         <div className="px-4 sm:px-6 lg:px-8 w-full">
-
           <div className="relative flex items-center h-[clamp(4.5rem,5vw,5.5rem)] w-full">
 
-            {/* LEFT SECTION */}
             <div className="flex items-center flex-none">
               <img
                 src="/CapstoneDynamicsLogo.png"
@@ -137,7 +95,6 @@ export default function DashboardPage() {
               </h1>
             </div>
 
-            {/* CENTER SECTION */}
             <div className="absolute left-1/2 -translate-x-1/2 text-center">
               <h1
                 className="font-bold text-white leading-tight text-[clamp(1.2rem,1.3vw,1.6rem)]"
@@ -147,7 +104,6 @@ export default function DashboardPage() {
               </h1>
             </div>
 
-            {/* RIGHT SECTION */}
             <div className="flex items-center gap-4 ml-auto flex-none">
               <span
                 className="font-semibold text-white text-[clamp(1rem,1.15vw,1.25rem)]"
@@ -172,12 +128,9 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      {/* -----------------------------------------------------
-          MAIN CONTENT SECTION
-      ----------------------------------------------------- */}
+      {/* MAIN CONTENT */}
       <main className="w-full px-4 sm:px-6 lg:px-12 pt-[clamp(0.8rem,1.5vw,2rem)] pb-[clamp(1.5rem,3vw,3rem)]">
 
-        {/* Welcome message */}
         <h2
           className="text-[clamp(1.4rem,1.8vw,2.2rem)] text-gray-900 mb-[clamp(0.6rem,1vw,1.2rem)]"
           style={styles.outfitFont}
@@ -185,7 +138,7 @@ export default function DashboardPage() {
           Welcome back, {user.username}
         </h2>
 
-        {/* Filter Buttons */}
+        {/* FILTER BUTTONS */}
         <div className="flex gap-2 mb-[clamp(0.6rem,1vw,1.2rem)]">
           <button
             onClick={() => setFilter("all")}
@@ -214,11 +167,10 @@ export default function DashboardPage() {
           </button>
         </div>
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-4 gap-[clamp(1rem,2vw,2.5rem)] mb-[clamp(1.5rem,2vw,2.5rem)] w-full">
+        {/* SUMMARY CARDS (Planned removed → now 3 cards) */}
+        <div className="grid grid-cols-3 gap-[clamp(1rem,2vw,2.5rem)] mb-[clamp(1.5rem,2vw,2.5rem)] w-full">
           {[
             { label: 'Active Initiatives', icon: '✅', value: summary.active },
-            { label: 'Planned Initiatives', icon: '📝', value: summary.planned },
             { label: 'Initiatives on Hold', icon: '⏸️', value: summary.hold },
             { label: 'Initiatives in Back Log', icon: '📅', value: summary.backlog },
           ].map((item, i) => (
@@ -233,7 +185,7 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        {/* Navigation Tiles */}
+        {/* NAVIGATION TILES */}
         <div className="grid grid-cols-3 gap-[clamp(1rem,2vw,2.5rem)] w-full">
           {[
             { label: 'Capacity Summary', icon: '📊', href: '/Resource-Manager/capacity_summary' },
@@ -260,6 +212,7 @@ export default function DashboardPage() {
             );
           })}
         </div>
+
       </main>
     </div>
   );
