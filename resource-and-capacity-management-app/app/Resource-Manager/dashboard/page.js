@@ -10,11 +10,23 @@ const styles = {
 
 export default function DashboardPage() {
 
+  /* ---------------------------------------------------------
+     USER SESSION STATE
+     ---------------------------------------------------------
+     PURPOSE:
+     - Stores logged-in user object
+     - Used for greeting, filtering, and profile navigation
+  --------------------------------------------------------- */
   const [user, setUser] = useState(null);
 
-  // ---------------------------------------------------------
-  // SUMMARY STATE (Planned removed)
-  // ---------------------------------------------------------
+  /* ---------------------------------------------------------
+     SUMMARY STATE
+     ---------------------------------------------------------
+     PURPOSE:
+     - filter → "all" or "mine"
+     - summary → counts for active, hold, backlog initiatives
+     - Used to populate summary cards
+  --------------------------------------------------------- */
   const [filter, setFilter] = useState("all");
   const [summary, setSummary] = useState({
     active: 0,
@@ -24,6 +36,13 @@ export default function DashboardPage() {
 
   const router = useRouter();
 
+  /* ---------------------------------------------------------
+     LOAD USER SESSION
+     ---------------------------------------------------------
+     PURPOSE:
+     - Retrieves user from localStorage
+     - Redirects to login if no session exists
+  --------------------------------------------------------- */
   useEffect(() => {
     const userData = localStorage.getItem('user');
 
@@ -35,6 +54,14 @@ export default function DashboardPage() {
     setUser(JSON.parse(userData));
   }, [router]);
 
+  /* ---------------------------------------------------------
+     FETCH SUMMARY COUNTS
+     ---------------------------------------------------------
+     PURPOSE:
+     - Loads initiative summary counts based on filter
+     - If filter = "mine", includes username in API request
+     - Updates summary cards dynamically
+  --------------------------------------------------------- */
   useEffect(() => {
     if (!user) return;
 
@@ -42,6 +69,7 @@ export default function DashboardPage() {
       try {
         let url = `/api/Resource-Manager/summary?filter=${filter}`;
 
+        // Add username when viewing "mine"
         if (filter === "mine") {
           url += `&username=${encodeURIComponent(user.username)}`;
         }
@@ -49,7 +77,6 @@ export default function DashboardPage() {
         const res = await fetch(url);
         const data = await res.json();
 
-        // Remove planned from API response
         setSummary({
           active: data.active,
           hold: data.hold,
@@ -64,6 +91,13 @@ export default function DashboardPage() {
     fetchSummary();
   }, [filter, user]);
 
+  /* ---------------------------------------------------------
+     LOADING STATE
+     ---------------------------------------------------------
+     PURPOSE:
+     - Prevents UI from rendering before user session loads
+     - Shows spinner for smoother UX
+  --------------------------------------------------------- */
   if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -75,11 +109,19 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-gray-50">
 
-      {/* HEADER */}
+      {/* -----------------------------------------------------
+         HEADER
+         -----------------------------------------------------
+         PURPOSE:
+         - Displays branding + app title
+         - Shows logged-in user
+         - Provides link to profile page
+      ----------------------------------------------------- */}
       <header className="bg-[#017ACB] shadow-sm w-full">
         <div className="px-4 sm:px-6 lg:px-8 w-full">
           <div className="relative flex items-center h-[clamp(4.5rem,5vw,5.5rem)] w-full">
 
+            {/* Logo + Company Name */}
             <div className="flex items-center flex-none">
               <img
                 src="/CapstoneDynamicsLogo.png"
@@ -95,6 +137,7 @@ export default function DashboardPage() {
               </h1>
             </div>
 
+            {/* Centered App Title */}
             <div className="absolute left-1/2 -translate-x-1/2 text-center">
               <h1
                 className="font-bold text-white leading-tight text-[clamp(1.2rem,1.3vw,1.6rem)]"
@@ -104,6 +147,7 @@ export default function DashboardPage() {
               </h1>
             </div>
 
+            {/* User Profile Icon */}
             <div className="flex items-center gap-4 ml-auto flex-none">
               <span
                 className="font-semibold text-white text-[clamp(1rem,1.15vw,1.25rem)]"
@@ -128,9 +172,18 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      {/* MAIN CONTENT */}
+      {/* -----------------------------------------------------
+         MAIN CONTENT
+         -----------------------------------------------------
+         PURPOSE:
+         - Displays greeting
+         - Shows filter buttons
+         - Renders summary cards
+         - Provides navigation tiles to other modules
+      ----------------------------------------------------- */}
       <main className="w-full px-4 sm:px-6 lg:px-12 pt-[clamp(0.8rem,1.5vw,2rem)] pb-[clamp(1.5rem,3vw,3rem)]">
 
+        {/* Greeting */}
         <h2
           className="text-[clamp(1.4rem,1.8vw,2.2rem)] text-gray-900 mb-[clamp(0.6rem,1vw,1.2rem)]"
           style={styles.outfitFont}
@@ -138,7 +191,13 @@ export default function DashboardPage() {
           Welcome back, {user.username}
         </h2>
 
-        {/* FILTER BUTTONS */}
+        {/* -----------------------------------------------------
+           FILTER BUTTONS
+           -----------------------------------------------------
+           PURPOSE:
+           - Toggle between "all" and "mine"
+           - Updates summary cards dynamically
+        ----------------------------------------------------- */}
         <div className="flex gap-2 mb-[clamp(0.6rem,1vw,1.2rem)]">
           <button
             onClick={() => setFilter("all")}
@@ -167,7 +226,13 @@ export default function DashboardPage() {
           </button>
         </div>
 
-        {/* SUMMARY CARDS */}
+        {/* -----------------------------------------------------
+           SUMMARY CARDS
+           -----------------------------------------------------
+           PURPOSE:
+           - Displays counts for active, hold, backlog
+           - Uses icons + values for quick visual scan
+        ----------------------------------------------------- */}
         <div className="grid grid-cols-3 gap-[clamp(1rem,2vw,2.5rem)] mb-[clamp(1.5rem,2vw,2.5rem)] w-full">
           {[
             { label: 'Active Initiatives', icon: '✅', value: summary.active },
@@ -185,7 +250,13 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        {/* NAVIGATION TILES */}
+        {/* -----------------------------------------------------
+           NAVIGATION TILES
+           -----------------------------------------------------
+           PURPOSE:
+           - Provides quick access to other modules
+           - Tiles without href are placeholders for future features
+        ----------------------------------------------------- */}
         <div className="grid grid-cols-3 gap-[clamp(1rem,2vw,2.5rem)] w-full">
           {[
             { label: 'Capacity Summary', icon: '📊', href: '/Resource-Manager/capacity_summary' },
