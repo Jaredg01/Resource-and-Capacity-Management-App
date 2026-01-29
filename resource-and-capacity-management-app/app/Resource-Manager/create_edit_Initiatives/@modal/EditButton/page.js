@@ -308,7 +308,7 @@ export default function EditInitiativeModal() {
      - Save + Cancel actions
 --------------------------------------------------------- */
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999]">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-9999">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl p-6">
         <h2 className="text-2xl font-bold mb-4 text-black">Edit Initiative</h2>
 
