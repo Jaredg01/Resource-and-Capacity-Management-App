@@ -8,7 +8,7 @@ const styles = {
   outfitFont: { fontFamily: 'Outfit, sans-serif' }
 };
 
-export default function CalendarViewPage() {
+export default function AssignEditInitiativeAllocationPage() {
   const [user, setUser] = useState(null);
   const router = useRouter();
 

@@ -262,8 +262,8 @@ export default function DashboardPage() {
             { label: 'Capacity Summary', icon: '📊', href: '/Resource-Manager/capacity_summary' },
             { label: 'Resources', icon: '👥', href: '/Resource-Manager/create_edit_Resources' },
             { label: 'Initiatives', icon: '🎯', href: '/Resource-Manager/create_edit_Initiatives' },
-            { label: 'Assignments', icon: '📋', href: '/Resource-Manager/assignments' },
-            { label: 'Calendar', icon: '📅', href: null },
+            { label: 'Assignments', icon: '📋', href: null },
+            { label: 'Calendar', icon: '📅', href: '/Resource-Manager/calendar_view' },
             { label: 'Report', icon: '📈', href: null },
           ].map((tile, i) => {
 
