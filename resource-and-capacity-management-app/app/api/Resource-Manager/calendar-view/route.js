@@ -106,19 +106,18 @@ export async function GET() {
 }
 
 /* ---------------------------------------------------------
-   POST → ACTIVITIES GROUPED BY MONTH
+   POST → ACTIVITIES GROUPED BY MONTH (WITH CATEGORY)
    ---------------------------------------------------------
    PURPOSE:
    - Accepts array of YYYYMM values
    - Optionally filters by employee ID
-   - Returns unique activities for each month
-   - Used to populate activity dropdowns in calendar view
+   - Returns unique { activity, category } pairs per month
 --------------------------------------------------------- */
 export async function POST(req) {
   try {
     const { months, emp_id } = await req.json();
 
-    // Validate required input
+    // Validate input
     if (!months || !Array.isArray(months) || months.length === 0) {
       return NextResponse.json(
         { success: false, error: 'Months array is required' },
@@ -130,40 +129,49 @@ export async function POST(req) {
     const db = mongo.db(DB_NAME);
     const allocationCol = db.collection('allocation');
 
-    // Build query dynamically (emp_id optional)
+    // Build query
     const query = {
       date: { $in: months },
-      ...(emp_id ? { emp_id } : {}) // Conditional spread
+      ...(emp_id ? { emp_id } : {})
     };
 
-    // Fetch all matching allocation rows
+    // Fetch all matching rows
     const results = await allocationCol.find(query).toArray();
 
     /* -----------------------------------------------------
-       GROUP ACTIVITIES BY MONTH
-       -----------------------------------------------------
-       PURPOSE:
-       - For each requested month, collect unique activities
-       - Ensures stable ordering and consistent structure
+       GROUP ACTIVITIES BY MONTH (WITH CATEGORY)
     ----------------------------------------------------- */
-    const activitiesByMonth = months.map((yyyymm) => ({
-      yyyymm,
-      label: formatMonthLabel(yyyymm),
+    const activitiesByMonth = months.map((yyyymm) => {
+      const monthRows = results.filter(
+        (r) => Number(r.date) === Number(yyyymm)
+      );
 
-      // Extract unique activities for this month
-      activities: [
-        ...new Set(
-          results
-            .filter((r) => Number(r.date) === Number(yyyymm)) // Match month
-            .map((r) => r.activity) // Extract activity name
-        )
-      ]
-    }));
+      const unique = [];
+      const seen = new Set();
+
+      monthRows.forEach((r) => {
+        const key = `${r.activity}__${r.category}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          unique.push({
+            activity: r.activity,
+            category: r.category
+          });
+        }
+      });
+
+      return {
+        yyyymm,
+        label: formatMonthLabel(yyyymm),
+        activities: unique
+      };
+    });
 
     return NextResponse.json({
       success: true,
       activitiesByMonth
     });
+
   } catch (err) {
     console.error('Error in POST /calendar-view:', err);
     return NextResponse.json(
