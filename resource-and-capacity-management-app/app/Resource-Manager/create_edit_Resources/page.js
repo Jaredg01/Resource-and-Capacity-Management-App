@@ -1,37 +1,37 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { createPortal } from 'react-dom';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { createPortal } from "react-dom";
 
 /* ---------------------------------------------------------
    Shared Style Object
 --------------------------------------------------------- */
 const styles = {
-  outfitFont: { fontFamily: 'Outfit, sans-serif' }
+  outfitFont: { fontFamily: "Outfit, sans-serif" },
 };
 
 /* ---------------------------------------------------------
    Month Definitions
 --------------------------------------------------------- */
 const MONTHS = [
-  { key: 202501, label: 'Jan-25' },
-  { key: 202502, label: 'Feb-25' },
-  { key: 202503, label: 'Mar-25' },
-  { key: 202504, label: 'Apr-25' },
-  { key: 202505, label: 'May-25' },
-  { key: 202506, label: 'Jun-25' },
-  { key: 202507, label: 'Jul-25' },
-  { key: 202508, label: 'Aug-25' },
-  { key: 202509, label: 'Sep-25' },
-  { key: 202510, label: 'Oct-25' },
-  { key: 202511, label: 'Nov-25' },
-  { key: 202512, label: 'Dec-25' },
-  { key: 202601, label: 'Jan-26' },
-  { key: 202602, label: 'Feb-26' },
-  { key: 202603, label: 'Mar-26' },
-  { key: 202604, label: 'Apr-26' }
+  { key: 202501, label: "Jan-25" },
+  { key: 202502, label: "Feb-25" },
+  { key: 202503, label: "Mar-25" },
+  { key: 202504, label: "Apr-25" },
+  { key: 202505, label: "May-25" },
+  { key: 202506, label: "Jun-25" },
+  { key: 202507, label: "Jul-25" },
+  { key: 202508, label: "Aug-25" },
+  { key: 202509, label: "Sep-25" },
+  { key: 202510, label: "Oct-25" },
+  { key: 202511, label: "Nov-25" },
+  { key: 202512, label: "Dec-25" },
+  { key: 202601, label: "Jan-26" },
+  { key: 202602, label: "Feb-26" },
+  { key: 202603, label: "Mar-26" },
+  { key: 202604, label: "Apr-26" },
 ];
 
 export default function ResourcesPage() {
@@ -43,23 +43,24 @@ export default function ResourcesPage() {
   const [departments, setDepartments] = useState([]);
   const [managers, setManagers] = useState([]);
   const [user, setUser] = useState(null);
-  
 
   /* -------------------------------------------------------
      UI State
   ------------------------------------------------------- */
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [activeFilter, setActiveFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [error, setError] = useState("");
+  const [activeFilter, setActiveFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Multi-select filter states
+  const [selectedNames, setSelectedNames] = useState([]);
   const [selectedTitles, setSelectedTitles] = useState([]);
   const [selectedReportsTo, setSelectedReportsTo] = useState([]);
   const [selectedCurrentStatuses, setSelectedCurrentStatuses] = useState([]);
 
   // Dropdown visibility toggles
+  const [showNameMenu, setShowNameMenu] = useState(false);
   const [showTitleMenu, setShowTitleMenu] = useState(false);
   const [showReportsToMenu, setShowReportsToMenu] = useState(false);
   const [showCurrentStatusMenu, setShowCurrentStatusMenu] = useState(false);
@@ -68,6 +69,7 @@ export default function ResourcesPage() {
   const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
 
   // Unique dropdown option lists (extracted from DB)
+  const [availableNames, setAvailableNames] = useState([]);
   const [availableTitles, setAvailableTitles] = useState([]);
   const [availableReportsTo, setAvailableReportsTo] = useState([]);
   const [availableCurrentStatuses, setAvailableCurrentStatuses] = useState([]);
@@ -75,12 +77,8 @@ export default function ResourcesPage() {
   // ✅ Portal ready state (prevents SSR crash)
   const [portalReady, setPortalReady] = useState(false);
 
-  const [nameSort, setNameSort] = useState('none');
-  const [showNameMenu, setShowNameMenu] = useState(false);
-
-
   const router = useRouter();
-  const apiUrl = 'http://localhost:3001';
+  const apiUrl = "http://localhost:3001";
 
   /* -------------------------------------------------------
      Effect: Enable Portal (client-only)
@@ -93,9 +91,9 @@ export default function ResourcesPage() {
      Effect: Load User from LocalStorage
   ------------------------------------------------------- */
   useEffect(() => {
-    const userData = localStorage.getItem('user');
+    const userData = localStorage.getItem("user");
     if (!userData) {
-      router.push('/login');
+      router.push("/login");
       return;
     }
     setUser(JSON.parse(userData));
@@ -119,10 +117,10 @@ export default function ResourcesPage() {
     statusFilter,
     searchTerm,
     user,
+    selectedNames,
     selectedTitles,
     selectedReportsTo,
     selectedCurrentStatuses,
-    nameSort 
   ]);
 
   /* -------------------------------------------------------
@@ -150,9 +148,7 @@ export default function ResourcesPage() {
       const employeesWithCap = await Promise.all(
         empData.map(async (emp) => {
           try {
-            const capResponse = await fetch(
-              `${apiUrl}/api/Resource-Manager/employees/${emp.emp_id}/capacity`
-            );
+            const capResponse = await fetch(`${apiUrl}/api/Resource-Manager/employees/${emp.emp_id}/capacity`);
             if (capResponse.ok) {
               const capData = await capResponse.json();
 
@@ -161,7 +157,7 @@ export default function ResourcesPage() {
                 capacityByMonth[cap.date] = {
                   amount: cap.amount,
                   status: cap.current_status,
-                  comments: cap.comments
+                  comments: cap.comments,
                 };
               });
 
@@ -172,14 +168,15 @@ export default function ResourcesPage() {
           }
 
           return { ...emp, capacity: {} };
-        })
+        }),
       );
 
       setEmployeesWithCapacity(employeesWithCap);
       setEmployees(employeesWithCap);
-      setError('');
+      setError("");
 
       // Build unique dropdown lists
+      setAvailableNames([...new Set(employeesWithCap.map((e) => e.emp_name).filter(Boolean))]);
       setAvailableTitles([...new Set(employeesWithCap.map((e) => e.emp_title).filter(Boolean))]);
 
       setAvailableReportsTo([
@@ -189,16 +186,14 @@ export default function ResourcesPage() {
               const manager = employeesWithCap.find((m) => m.emp_id === e.manager_id);
               return manager ? manager.emp_name : null;
             })
-            .filter(Boolean)
-        )
+            .filter(Boolean),
+        ),
       ]);
 
-      setAvailableCurrentStatuses([
-        ...new Set(employeesWithCap.map((e) => getCurrentStatus(e)).filter(Boolean))
-      ]);
+      setAvailableCurrentStatuses([...new Set(employeesWithCap.map((e) => getCurrentStatus(e)).filter(Boolean))]);
     } catch (err) {
-      console.error('Error fetching data:', err);
-      setError('Failed to load data');
+      console.error("Error fetching data:", err);
+      setError("Failed to load data");
     } finally {
       setLoading(false);
     }
@@ -211,21 +206,21 @@ export default function ResourcesPage() {
     let filtered = [...employeesWithCapacity];
 
     // Filter: Mine
-    if (activeFilter === 'mine' && user) {
+    if (activeFilter === "mine" && user) {
       filtered = filtered.filter((emp) => emp.manager_id === user.emp_id);
     }
 
     // Filter: Active / Inactive
-    if (statusFilter !== 'all') {
+    if (statusFilter !== "all") {
       filtered = filtered.filter((emp) => {
         const now = new Date();
         const currentDate = now.getFullYear() * 100 + (now.getMonth() + 1);
         const currentCap = emp.capacity[currentDate];
 
-        if (statusFilter === 'active') {
-          return !currentCap || currentCap.status === 'Active';
+        if (statusFilter === "active") {
+          return !currentCap || currentCap.status === "Active";
         } else {
-          return currentCap && currentCap.status === 'Inactive';
+          return currentCap && currentCap.status === "Inactive";
         }
       });
     }
@@ -234,10 +229,13 @@ export default function ResourcesPage() {
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(
-        (emp) =>
-          emp.emp_name.toLowerCase().includes(term) ||
-          emp.emp_title.toLowerCase().includes(term)
+        (emp) => emp.emp_name.toLowerCase().includes(term) || emp.emp_title.toLowerCase().includes(term),
       );
+    }
+
+    // Multi-select Name
+    if (selectedNames.length > 0 && selectedNames.length < availableNames.length) {
+      filtered = filtered.filter((emp) => selectedNames.includes(emp.emp_name));
     }
 
     // Multi-select Title
@@ -254,26 +252,11 @@ export default function ResourcesPage() {
     }
 
     // Multi-select Current Status
-    if (
-      selectedCurrentStatuses.length > 0 &&
-      selectedCurrentStatuses.length < availableCurrentStatuses.length
-    ) {
+    if (selectedCurrentStatuses.length > 0 && selectedCurrentStatuses.length < availableCurrentStatuses.length) {
       filtered = filtered.filter((emp) => {
         const status = getCurrentStatus(emp);
         return selectedCurrentStatuses.includes(status);
       });
-    }
-
-    if (nameSort === 'az') {
-    filtered.sort((a, b) =>
-    a.emp_name.localeCompare(b.emp_name)
-      );
-    }
-
-    if (nameSort === 'za') {
-      filtered.sort((a, b) =>
-      b.emp_name.localeCompare(a.emp_name)
-     );
     }
 
     setEmployees(filtered);
@@ -291,13 +274,14 @@ export default function ResourcesPage() {
   ------------------------------------------------------- */
   useEffect(() => {
     const handleClickOutside = () => {
+      setShowNameMenu(false);
       setShowTitleMenu(false);
       setShowReportsToMenu(false);
       setShowCurrentStatusMenu(false);
     };
 
-    window.addEventListener('click', handleClickOutside);
-    return () => window.removeEventListener('click', handleClickOutside);
+    window.addEventListener("click", handleClickOutside);
+    return () => window.removeEventListener("click", handleClickOutside);
   }, []);
 
   /* ---------------------------------------------------------
@@ -310,16 +294,16 @@ export default function ResourcesPage() {
 
   const getManagerName = (managerId) => {
     const manager = employeesWithCapacity.find((e) => e.emp_id === managerId);
-    return manager ? manager.emp_name : '-';
+    return manager ? manager.emp_name : "-";
   };
 
-  const getDirectorName = () => 'Charlotte Nguyen';
+  const getDirectorName = () => "Charlotte Nguyen"; // HARD-CODED FOR NOW
 
   const getCurrentStatus = (employee) => {
     const now = new Date();
     const currentDate = now.getFullYear() * 100 + (now.getMonth() + 1);
     const cap = employee.capacity ? employee.capacity[currentDate] : null;
-    return cap ? cap.status : 'Active';
+    return cap ? cap.status : "Active";
   };
 
   const getMonthValue = (employee, monthKey) => {
@@ -328,7 +312,7 @@ export default function ResourcesPage() {
   };
 
   const goToDashboard = () => {
-    router.push('/Resource-Manager/dashboard');
+    router.push("/Resource-Manager/dashboard");
   };
 
   /* ---------------------------------------------------------
@@ -344,6 +328,7 @@ export default function ResourcesPage() {
         <div
           className="fixed inset-0 z-[9998]"
           onClick={() => {
+            setShowNameMenu(false);
             setShowTitleMenu(false);
             setShowReportsToMenu(false);
             setShowCurrentStatusMenu(false);
@@ -357,7 +342,7 @@ export default function ResourcesPage() {
           {menu}
         </div>
       </>,
-      document.body
+      document.body,
     );
   };
 
@@ -390,13 +375,9 @@ export default function ResourcesPage() {
           <div className="relative flex items-center h-[clamp(4.5rem,5vw,5.5rem)] w-full">
             <div
               className="flex items-center cursor-pointer flex-none"
-              onClick={() => router.push('/Resource-Manager/dashboard')}
+              onClick={() => router.push("/Resource-Manager/dashboard")}
             >
-              <img
-                src="/CapstoneDynamicsLogo.png"
-                alt="Logo"
-                className="w-auto h-[clamp(3.2rem,3.8vw,4rem)]"
-              />
+              <img src="/CapstoneDynamicsLogo.png" alt="Logo" className="w-auto h-[clamp(3.2rem,3.8vw,4rem)]" />
               <h1
                 className="font-bold text-white leading-tight ml-4 text-[clamp(1.6rem,1.7vw,2rem)]"
                 style={styles.outfitFont}
@@ -415,20 +396,17 @@ export default function ResourcesPage() {
             </div>
 
             <div className="flex items-center gap-4 ml-auto flex-none">
-              <span
-                className="font-semibold text-white text-[clamp(1rem,1.15vw,1.25rem)]"
-                style={styles.outfitFont}
-              >
-                {user?.username || ''}
+              <span className="font-semibold text-white text-[clamp(1rem,1.15vw,1.25rem)]" style={styles.outfitFont}>
+                {user?.username || ""}
               </span>
 
               <div
-                onClick={() => router.push('/Resource-Manager/Profile/view-profile')}
+                onClick={() => router.push("/Resource-Manager/Profile/view-profile")}
                 className="rounded-full bg-white flex items-center justify-center cursor-pointer hover:opacity-90 transition
                            w-[clamp(2.4rem,2.8vw,3.0rem)] h-[clamp(2.4rem,2.8vw,3.0rem)]"
               >
                 <span className="text-[#017ACB] font-bold text-[clamp(1.1rem,1.3vw,1.5rem)]">
-                  {user?.username?.charAt(0)?.toUpperCase() || ''}
+                  {user?.username?.charAt(0)?.toUpperCase() || ""}
                 </span>
               </div>
             </div>
@@ -437,29 +415,24 @@ export default function ResourcesPage() {
       </header>
 
       <main className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <div className="flex items-center gap-4 mb-4">
-                <h2
-                  className="text-2xl text-gray-900"
-                  style={styles.outfitFont}
-                >
-                Data Management - Resource Availability by Month
-                 </h2>
+        <div className="flex items-center gap-4 mb-4">
+          <h2 className="text-2xl text-gray-900" style={styles.outfitFont}>
+            Data Management - Resource Availability by Month
+          </h2>
 
-           <button
-                onClick={goToDashboard}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition cursor-pointer"
-                style={styles.outfitFont}
-              >
-                ← Back to Dashboard
-            </button>
-          
-          </div>
-
+          <button
+            onClick={goToDashboard}
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition cursor-pointer"
+            style={styles.outfitFont}
+          >
+            ← Back to Dashboard
+          </button>
+        </div>
 
         {error && (
           <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
             {error}
-            <button onClick={() => setError('')} className="ml-4 text-red-900 font-bold">
+            <button onClick={() => setError("")} className="ml-4 text-red-900 font-bold">
               ×
             </button>
           </div>
@@ -469,9 +442,9 @@ export default function ResourcesPage() {
           <div className="flex flex-wrap gap-4 items-center">
             <div>
               <button
-                onClick={() => setActiveFilter('all')}
+                onClick={() => setActiveFilter("all")}
                 className={`p-2 w-16 border border-gray-300 text-center cursor-pointer text-sm ${
-                  activeFilter === 'all' ? 'bg-[#017ACB] text-white' : 'text-gray-600 bg-white'
+                  activeFilter === "all" ? "bg-[#017ACB] text-white" : "text-gray-600 bg-white"
                 }`}
                 style={styles.outfitFont}
               >
@@ -479,9 +452,9 @@ export default function ResourcesPage() {
               </button>
 
               <button
-                onClick={() => setActiveFilter('mine')}
+                onClick={() => setActiveFilter("mine")}
                 className={`p-2 w-16 border border-gray-300 text-center cursor-pointer text-sm ${
-                  activeFilter === 'mine' ? 'bg-[#017ACB] text-white' : 'text-gray-600 bg-white'
+                  activeFilter === "mine" ? "bg-[#017ACB] text-white" : "text-gray-600 bg-white"
                 }`}
                 style={styles.outfitFont}
               >
@@ -531,74 +504,68 @@ export default function ResourcesPage() {
                   >
                     Edit
                   </th>
+
+                  {/* Name Filter Column */}
                   <th
-  className="px-2 py-2 text-left font-semibold border-b border-black border-r border-white min-w-[150px] relative"
-  style={styles.outfitFont}
->
-  <div className="flex justify-between items-center">
-    <span>Name</span>
+                    className="px-2 py-2 text-left font-semibold border-b border-black border-r border-white min-w-[150px] relative"
+                    style={styles.outfitFont}
+                  >
+                    <div className="flex justify-between items-center">
+                      <span>Name</span>
 
-    <button
-      onClick={(e) => {
-        e.stopPropagation();
-        const rect = e.currentTarget.getBoundingClientRect();
-        setMenuPosition({ x: rect.left, y: rect.bottom });
-        setShowNameMenu((prev) => !prev);
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setMenuPosition({ x: rect.left, y: rect.bottom });
+                          setShowNameMenu((prev) => !prev);
 
-        // close others
-        setShowTitleMenu(false);
-        setShowReportsToMenu(false);
-        setShowCurrentStatusMenu(false);
-      }}
-      className="ml-2 bg-white text-[#017ACB] px-2 py-1 rounded text-xs font-bold hover:bg-gray-100 transition"
-    >
-      ▼
-    </button>
-  </div>
+                          // close others
+                          setShowTitleMenu(false);
+                          setShowReportsToMenu(false);
+                          setShowCurrentStatusMenu(false);
+                        }}
+                        className="ml-2 bg-white text-[#017ACB] px-2 py-1 rounded text-xs font-bold hover:bg-gray-100 transition"
+                      >
+                        ▼
+                      </button>
+                    </div>
 
-  {/* NAME SORT MENU */}
-  {showNameMenu &&
-    renderDropdownPortal(
-      <div className="bg-white text-black shadow-lg rounded w-40 border border-gray-200">
-        <div
-          className={`px-3 py-2 cursor-pointer text-sm hover:bg-gray-200 ${
-            nameSort === 'none' ? 'bg-gray-100 font-semibold' : ''
-          }`}
-          onClick={() => {
-            setNameSort('none');
-            setShowNameMenu(false);
-          }}
-        >
-          None
-        </div>
+                    {/* Name filter menu */}
+                    {showNameMenu &&
+                      renderDropdownPortal(
+                        <div className="bg-white text-black shadow-lg rounded w-56 max-h-64 overflow-y-auto border border-gray-200">
+                          <div
+                            className={`px-3 py-2 cursor-pointer text-sm hover:bg-gray-200 flex items-center gap-2 ${
+                              selectedNames.length === 0 || selectedNames.length === availableNames.length
+                                ? "bg-gray-100 font-semibold"
+                                : ""
+                            }`}
+                            onClick={() => setSelectedNames([])}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedNames.length === 0 || selectedNames.length === availableNames.length}
+                              readOnly
+                            />
+                            All
+                          </div>
 
-        <div
-          className={`px-3 py-2 cursor-pointer text-sm hover:bg-gray-200 ${
-            nameSort === 'az' ? 'bg-gray-100 font-semibold' : ''
-          }`}
-          onClick={() => {
-            setNameSort('az');
-            setShowNameMenu(false);
-          }}
-        >
-          A → Z
-        </div>
-
-        <div
-          className={`px-3 py-2 cursor-pointer text-sm hover:bg-gray-200 ${
-            nameSort === 'za' ? 'bg-gray-100 font-semibold' : ''
-          }`}
-          onClick={() => {
-            setNameSort('za');
-            setShowNameMenu(false);
-          }}
-        >
-          Z → A
-        </div>
-      </div>
-    )}
-               </th>
-
+                          {availableNames.map((name) => (
+                            <div
+                              key={name}
+                              className={`px-3 py-2 cursor-pointer text-sm hover:bg-gray-200 flex items-center gap-2 ${
+                                selectedNames.includes(name) ? "bg-gray-100 font-semibold" : ""
+                              }`}
+                              onClick={() => toggleSelection(name, setSelectedNames, selectedNames)}
+                            >
+                              <input type="checkbox" checked={selectedNames.includes(name)} readOnly />
+                              {name}
+                            </div>
+                          ))}
+                        </div>,
+                      )}
+                  </th>
 
                   {/* Title Filter Column */}
                   <th
@@ -628,19 +595,15 @@ export default function ResourcesPage() {
                         <div className="bg-white text-black shadow-lg rounded w-56 max-h-64 overflow-y-auto border border-gray-200">
                           <div
                             className={`px-3 py-2 cursor-pointer text-sm hover:bg-gray-200 flex items-center gap-2 ${
-                              selectedTitles.length === 0 ||
-                              selectedTitles.length === availableTitles.length
-                                ? 'bg-gray-100 font-semibold'
-                                : ''
+                              selectedTitles.length === 0 || selectedTitles.length === availableTitles.length
+                                ? "bg-gray-100 font-semibold"
+                                : ""
                             }`}
                             onClick={() => setSelectedTitles([])}
                           >
                             <input
                               type="checkbox"
-                              checked={
-                                selectedTitles.length === 0 ||
-                                selectedTitles.length === availableTitles.length
-                              }
+                              checked={selectedTitles.length === 0 || selectedTitles.length === availableTitles.length}
                               readOnly
                             />
                             All
@@ -650,7 +613,7 @@ export default function ResourcesPage() {
                             <div
                               key={title}
                               className={`px-3 py-2 cursor-pointer text-sm hover:bg-gray-200 flex items-center gap-2 ${
-                                selectedTitles.includes(title) ? 'bg-gray-100 font-semibold' : ''
+                                selectedTitles.includes(title) ? "bg-gray-100 font-semibold" : ""
                               }`}
                               onClick={() => toggleSelection(title, setSelectedTitles, selectedTitles)}
                             >
@@ -658,7 +621,7 @@ export default function ResourcesPage() {
                               {title}
                             </div>
                           ))}
-                        </div>
+                        </div>,
                       )}
                   </th>
 
@@ -697,18 +660,16 @@ export default function ResourcesPage() {
                         <div className="bg-white text-black shadow-lg rounded w-56 max-h-64 overflow-y-auto border border-gray-200">
                           <div
                             className={`px-3 py-2 cursor-pointer text-sm hover:bg-gray-200 flex items-center gap-2 ${
-                              selectedReportsTo.length === 0 ||
-                              selectedReportsTo.length === availableReportsTo.length
-                                ? 'bg-gray-100 font-semibold'
-                                : ''
+                              selectedReportsTo.length === 0 || selectedReportsTo.length === availableReportsTo.length
+                                ? "bg-gray-100 font-semibold"
+                                : ""
                             }`}
                             onClick={() => setSelectedReportsTo([])}
                           >
                             <input
                               type="checkbox"
                               checked={
-                                selectedReportsTo.length === 0 ||
-                                selectedReportsTo.length === availableReportsTo.length
+                                selectedReportsTo.length === 0 || selectedReportsTo.length === availableReportsTo.length
                               }
                               readOnly
                             />
@@ -719,21 +680,15 @@ export default function ResourcesPage() {
                             <div
                               key={manager}
                               className={`px-3 py-2 cursor-pointer text-sm hover:bg-gray-200 flex items-center gap-2 ${
-                                selectedReportsTo.includes(manager) ? 'bg-gray-100 font-semibold' : ''
+                                selectedReportsTo.includes(manager) ? "bg-gray-100 font-semibold" : ""
                               }`}
-                              onClick={() =>
-                                toggleSelection(manager, setSelectedReportsTo, selectedReportsTo)
-                              }
+                              onClick={() => toggleSelection(manager, setSelectedReportsTo, selectedReportsTo)}
                             >
-                              <input
-                                type="checkbox"
-                                checked={selectedReportsTo.includes(manager)}
-                                readOnly
-                              />
+                              <input type="checkbox" checked={selectedReportsTo.includes(manager)} readOnly />
                               {manager}
                             </div>
                           ))}
-                        </div>
+                        </div>,
                       )}
                   </th>
 
@@ -780,8 +735,8 @@ export default function ResourcesPage() {
                             className={`px-3 py-2 cursor-pointer text-sm hover:bg-gray-200 flex items-center gap-2 ${
                               selectedCurrentStatuses.length === 0 ||
                               selectedCurrentStatuses.length === availableCurrentStatuses.length
-                                ? 'bg-gray-100 font-semibold'
-                                : ''
+                                ? "bg-gray-100 font-semibold"
+                                : ""
                             }`}
                             onClick={() => setSelectedCurrentStatuses([])}
                           >
@@ -800,27 +755,17 @@ export default function ResourcesPage() {
                             <div
                               key={status}
                               className={`px-3 py-2 cursor-pointer text-sm hover:bg-gray-200 flex items-center gap-2 ${
-                                selectedCurrentStatuses.includes(status)
-                                  ? 'bg-gray-100 font-semibold'
-                                  : ''
+                                selectedCurrentStatuses.includes(status) ? "bg-gray-100 font-semibold" : ""
                               }`}
                               onClick={() =>
-                                toggleSelection(
-                                  status,
-                                  setSelectedCurrentStatuses,
-                                  selectedCurrentStatuses
-                                )
+                                toggleSelection(status, setSelectedCurrentStatuses, selectedCurrentStatuses)
                               }
                             >
-                              <input
-                                type="checkbox"
-                                checked={selectedCurrentStatuses.includes(status)}
-                                readOnly
-                              />
+                              <input type="checkbox" checked={selectedCurrentStatuses.includes(status)} readOnly />
                               {status}
                             </div>
                           ))}
-                        </div>
+                        </div>,
                       )}
                   </th>
 
@@ -876,15 +821,15 @@ export default function ResourcesPage() {
                         {getDirectorName()}
                       </td>
                       <td className="px-2 py-2 text-gray-600 border-r border-black" style={styles.outfitFont}>
-                        {employee.other_info || ''}
+                        {employee.other_info || ""}
                       </td>
 
                       <td className="px-2 py-2 border-r border-black">
                         <span
                           className={`px-2 py-1 text-xs rounded ${
-                            getCurrentStatus(employee) === 'Active'
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-red-100 text-red-800'
+                            getCurrentStatus(employee) === "Active"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-800"
                           }`}
                           style={styles.outfitFont}
                         >
