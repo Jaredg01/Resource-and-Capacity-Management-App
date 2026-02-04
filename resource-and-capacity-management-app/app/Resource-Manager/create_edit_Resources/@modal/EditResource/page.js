@@ -3,28 +3,26 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 
-const styles = {
-  outfitFont: { fontFamily: 'Outfit, sans-serif' }
-};
-
 export default function EditResourceModal() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const empId = searchParams.get('id');
-  
+
   const [departments, setDepartments] = useState([]);
   const [managers, setManagers] = useState([]);
   const [employee, setEmployee] = useState(null);
+
   const [formData, setFormData] = useState({
     emp_name: '',
     emp_title: '',
     dept_no: '',
     manager_id: '',
+    director_id: '',
     other_info: ''
   });
 
   /* -------------------------------------------------------
-     Fetch employee data and lookup tables on mount
+     Fetch data
   ------------------------------------------------------- */
   useEffect(() => {
     if (empId) {
@@ -35,255 +33,187 @@ export default function EditResourceModal() {
   }, [empId]);
 
   const fetchEmployee = async () => {
-    try {
-      const res = await fetch(`http://localhost:3001/api/Resource-Manager/employees/${empId}`);
-      if (res.ok) {
-        const data = await res.json();
-        setEmployee(data);
-        setFormData({
-          emp_name: data.emp_name || '',
-          emp_title: data.emp_title || '',
-          dept_no: data.dept_no || '',
-          manager_id: data.manager_id || '',
-          other_info: data.other_info || ''
-        });
-      }
-    } catch (err) {
-      console.error('Error fetching employee:', err);
-    }
+    const res = await fetch(
+      `http://localhost:3001/api/Resource-Manager/employees/${empId}`
+    );
+    const data = await res.json();
+    setEmployee(data);
+    setFormData({
+      emp_name: data.emp_name || '',
+      emp_title: data.emp_title || '',
+      dept_no: data.dept_no || '',
+      manager_id: data.manager_id || '',
+      director_id: data.director_id || '',
+      other_info: data.other_info || ''
+    });
   };
 
   const fetchDepartments = async () => {
-    try {
-      const res = await fetch('http://localhost:3001/api/Resource-Manager/departments');
-      if (res.ok) {
-        const data = await res.json();
-        setDepartments(data);
-      }
-    } catch (err) {
-      console.error('Error fetching departments:', err);
-    }
+    const res = await fetch(
+      'http://localhost:3001/api/Resource-Manager/departments'
+    );
+    setDepartments(await res.json());
   };
 
   const fetchManagers = async () => {
-    try {
-      const res = await fetch('http://localhost:3001/api/Resource-Manager/managers');
-      if (res.ok) {
-        const data = await res.json();
-        setManagers(data);
-      }
-    } catch (err) {
-      console.error('Error fetching managers:', err);
-    }
+    const res = await fetch(
+      'http://localhost:3001/api/Resource-Manager/managers'
+    );
+    setManagers(await res.json());
   };
 
   /* -------------------------------------------------------
-     Handle form submission
+     Submit
   ------------------------------------------------------- */
   const handleEdit = async (e) => {
     e.preventDefault();
-    
-    try {
-      const res = await fetch(`http://localhost:3001/api/Resource-Manager/employees/${empId}`, {
+
+    await fetch(
+      `http://localhost:3001/api/Resource-Manager/employees/${empId}`,
+      {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
-      });
-
-      if (res.ok) {
-        router.back();
-      } else {
-        console.error('Failed to update resource');
       }
-    } catch (err) {
-      console.error('Error updating resource:', err);
-    }
-  };
+    );
 
-  /* -------------------------------------------------------
-     Handle status change (Active/Inactive)
-  ------------------------------------------------------- */
-  const handleStatusChange = async (status) => {
-    try {
-      const res = await fetch(`http://localhost:3001/api/Resource-Manager/employees/${empId}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ current_status: status })
-      });
-
-      if (res.ok) {
-        // Update local employee state
-        setEmployee({ ...employee, current_status: status });
-      } else {
-        console.error('Failed to update status');
-      }
-    } catch (err) {
-      console.error('Error updating status:', err);
-    }
-  };
-
-  const handleCancel = () => {
     router.back();
   };
 
-  if (!employee) {
-    return (
-      <div 
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"
-        onClick={handleCancel}
-      >
-        <div 
-          className="bg-white rounded-lg shadow-xl p-6"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <p className="text-gray-700">Loading...</p>
-        </div>
-      </div>
-    );
-  }
+  if (!employee) return null;
 
   return (
-    <div 
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"
-      onClick={handleCancel}
-    >
-      <div 
-        className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
-        
-        {/* Modal Title */}
-        <h2 className="text-xl font-bold text-gray-900 mb-4" style={styles.outfitFont}>
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999]">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl p-6">
+        <h2 className="text-2xl font-bold mb-6 text-black">
           Edit Resource
         </h2>
 
-        {/* Edit Form */}
-        <form onSubmit={handleEdit} className="space-y-4">
+        <form onSubmit={handleEdit}>
+          <div className="grid grid-cols-2 gap-4">
 
-          {/* Name Field */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1" style={styles.outfitFont}>
-              Name *
-            </label>
-            <input
-              type="text"
-              value={formData.emp_name}
-              onChange={(e) => setFormData({ ...formData, emp_name: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded text-gray-700 text-sm"
-              style={styles.outfitFont}
-              required
-            />
-          </div>
-          
-          {/* Title Field */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1" style={styles.outfitFont}>
-              Title *
-            </label>
-            <input
-              type="text"
-              value={formData.emp_title}
-              onChange={(e) => setFormData({ ...formData, emp_title: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded text-gray-700 text-sm"
-              style={styles.outfitFont}
-              required
-            />
-          </div>
+            {/* NAME */}
+            <div className="flex flex-col">
+              <label className="text-xs mb-1 text-black font-semibold">
+                Name *
+              </label>
+              <input
+                value={formData.emp_name}
+                onChange={(e) =>
+                  setFormData({ ...formData, emp_name: e.target.value })
+                }
+                className="border p-2 rounded text-black font-medium"
+                required
+              />
+            </div>
 
-          {/* Department Field */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1" style={styles.outfitFont}>
-              Department *
-            </label>
-            <select
-              value={formData.dept_no}
-              onChange={(e) => setFormData({ ...formData, dept_no: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded text-gray-700 text-sm"
-              style={styles.outfitFont}
-              required
-            >
-              <option value="">Select Department</option>
-              {departments.map((dept) => (
-                <option key={dept.dept_no} value={dept.dept_no}>
-                  {dept.dept_name}
-                </option>
-              ))}
-            </select>
-          </div>
+            {/* TITLE */}
+            <div className="flex flex-col">
+              <label className="text-xs mb-1 text-black font-semibold">
+                Title *
+              </label>
+              <input
+                value={formData.emp_title}
+                onChange={(e) =>
+                  setFormData({ ...formData, emp_title: e.target.value })
+                }
+                className="border p-2 rounded text-black font-medium"
+                required
+              />
+            </div>
 
-          {/* Reports To Field */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1" style={styles.outfitFont}>
-              Reports To
-            </label>
-            <select
-              value={formData.manager_id}
-              onChange={(e) => setFormData({ ...formData, manager_id: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded text-gray-700 text-sm"
-              style={styles.outfitFont}
-            >
-              <option value="">Select Manager</option>
-              {managers.map((manager) => (
-                <option key={manager.emp_id} value={manager.emp_id}>
-                  {manager.emp_name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Other Information Field */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1" style={styles.outfitFont}>
-              Other Information
-            </label>
-            <input
-              type="text"
-              value={formData.other_info}
-              onChange={(e) => setFormData({ ...formData, other_info: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded text-gray-700 text-sm"
-              style={styles.outfitFont}
-            />
-          </div>
-
-          {/* Status Buttons */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1" style={styles.outfitFont}>
-              Status
-            </label>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => handleStatusChange('Active')}
-                className="px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm cursor-pointer"
-                style={styles.outfitFont}
+            {/* DEPARTMENT */}
+            <div className="flex flex-col">
+              <label className="text-xs mb-1 text-black font-semibold">
+                Department *
+              </label>
+              <select
+                value={formData.dept_no}
+                onChange={(e) =>
+                  setFormData({ ...formData, dept_no: e.target.value })
+                }
+                className="border p-2 rounded text-black font-medium"
+                required
               >
-                Set Active
-              </button>
-              <button
-                type="button"
-                onClick={() => handleStatusChange('Inactive')}
-                className="px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm cursor-pointer"
-                style={styles.outfitFont}
+                <option value="">Select Department</option>
+                {departments.map((d) => (
+                  <option key={d.dept_no} value={d.dept_no}>
+                    {d.dept_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* REPORTS TO */}
+            <div className="flex flex-col">
+              <label className="text-xs mb-1 text-black font-semibold">
+                Reports To
+              </label>
+              <select
+                value={formData.manager_id}
+                onChange={(e) =>
+                  setFormData({ ...formData, manager_id: e.target.value })
+                }
+                className="border p-2 rounded text-black font-medium"
               >
-                Set Inactive
-              </button>
+                <option value="">Select Manager</option>
+                {managers.map((m) => (
+                  <option key={m.emp_id} value={m.emp_id}>
+                    {m.emp_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* DIRECTOR LEVEL */}
+            <div className="flex flex-col">
+              <label className="text-xs mb-1 text-black font-semibold">
+                Director Level
+              </label>
+              <select
+                value={formData.director_id}
+                onChange={(e) =>
+                  setFormData({ ...formData, director_id: e.target.value })
+                }
+                className="border p-2 rounded text-black font-medium"
+              >
+                <option value="">Select Director</option>
+                {managers.map((m) => (
+                  <option key={m.emp_id} value={m.emp_id}>
+                    {m.emp_name}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex gap-3 pt-4">
+          {/* OTHER INFO */}
+          <div className="flex flex-col mt-4">
+            <label className="text-xs mb-1 text-black font-semibold">
+              Other Information
+            </label>
+            <textarea
+              value={formData.other_info}
+              onChange={(e) =>
+                setFormData({ ...formData, other_info: e.target.value })
+              }
+              className="border p-2 rounded w-full text-black font-medium"
+            />
+          </div>
+
+          {/* BUTTONS */}
+          <div className="flex justify-end gap-4 mt-6">
             <button
               type="button"
-              onClick={handleCancel}
-              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-100 text-sm cursor-pointer"
-              style={styles.outfitFont}
+              onClick={() => router.back()}
+              className="px-4 py-2 bg-gray-200 text-black rounded hover:bg-gray-300 font-medium"
             >
               Cancel
             </button>
+
             <button
               type="submit"
-              className="flex-1 px-4 py-2 bg-[#017ACB] text-white rounded hover:bg-blue-700 text-sm cursor-pointer"
-              style={styles.outfitFont}
+              className="px-4 py-2 bg-[#017ACB] text-white rounded hover:bg-blue-700 font-medium"
             >
               Save Changes
             </button>
