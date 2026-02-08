@@ -152,6 +152,33 @@ app.post('/api/Resource-Manager/auth/login', async (req, res) => {
 });
 
 // -----------------------------------------------------------------------------
+// Account Lookup
+// -----------------------------------------------------------------------------
+
+app.get('/api/Resource-Manager/account/by-username', async (req, res) => {
+  try {
+    const { username } = req.query;
+    if (!username) {
+      return res.status(400).json({ error: 'username is required' });
+    }
+
+    const collection = req.db.collection('account');
+    const account = await collection.findOne({ 'account.username': username });
+    if (!account) {
+      return res.status(404).json({ error: 'Account not found' });
+    }
+
+    res.json({
+      emp_id: account.emp_id,
+      username: account.account.username
+    });
+  } catch (error) {
+    console.error('Error fetching account by username:', error);
+    res.status(500).json({ error: 'Error fetching account' });
+  }
+});
+
+// -----------------------------------------------------------------------------
 // Authentication: REGISTER
 // -----------------------------------------------------------------------------
 

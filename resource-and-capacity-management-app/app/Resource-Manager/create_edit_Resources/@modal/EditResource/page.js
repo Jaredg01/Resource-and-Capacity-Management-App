@@ -27,8 +27,6 @@ export default function EditResourceModal() {
     other_info: ''
   });
 
-  const MANAGER_LEVEL_OPTIONS = ['None', 'Level 1', 'Level 2', 'Level 3', 'Level 4', 'Level 5'];
-  const DIRECTOR_LEVEL_OPTIONS = ['None', 'Level 1', 'Level 2', 'Level 3', 'Level 4', 'Level 5'];
 
   /* -------------------------------------------------------
      Fetch employee data and lookup tables on mount
@@ -276,7 +274,6 @@ export default function EditResourceModal() {
             >
               <option value="">Select Manager Level</option>
               {[...new Set([
-                ...MANAGER_LEVEL_OPTIONS,
                 formData.manager_level
               ].filter(Boolean))].map((level) => (
                 <option key={level} value={level}>
@@ -300,7 +297,6 @@ export default function EditResourceModal() {
               <option value="">Select Director Level</option>
               {[...new Set([
                 ...directorLevelOptions,
-                ...DIRECTOR_LEVEL_OPTIONS,
                 formData.director_level
               ].filter(Boolean))].map((level) => (
                 <option key={level} value={level}>

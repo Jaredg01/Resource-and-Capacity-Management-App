@@ -34,12 +34,15 @@ const MONTHS = [
   { key: 202604, label: "Apr-26" },
 ];
 
+const DEPARTMENT_FILTER_NAME = "Data Mgmt";
+
 export default function ResourcesPage() {
   /* -------------------------------------------------------
      Core Data State
   ------------------------------------------------------- */
   const [employees, setEmployees] = useState([]);
   const [employeesWithCapacity, setEmployeesWithCapacity] = useState([]);
+  const [allEmployeesWithCapacity, setAllEmployeesWithCapacity] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [managers, setManagers] = useState([]);
   const [user, setUser] = useState(null);
@@ -59,7 +62,7 @@ export default function ResourcesPage() {
   const [selectedReportsTo, setSelectedReportsTo] = useState([]);
   const [selectedCurrentStatuses, setSelectedCurrentStatuses] = useState([]);
 
-  const [nameSort, setNameSort] = useState('none');
+  const [nameSort, setNameSort] = useState("none");
 
   // Dropdown visibility toggles
   const [showNameMenu, setShowNameMenu] = useState(false);
@@ -78,6 +81,11 @@ export default function ResourcesPage() {
 
   // ✅ Portal ready state (prevents SSR crash)
   const [portalReady, setPortalReady] = useState(false);
+
+  // Inline month editing
+  const [editingCell, setEditingCell] = useState(null); // { empId, monthKey }
+  const [editingValue, setEditingValue] = useState("");
+
 
   const router = useRouter();
   const apiUrl = "http://localhost:3001";
@@ -98,7 +106,35 @@ export default function ResourcesPage() {
       router.push("/login");
       return;
     }
-    setUser(JSON.parse(userData));
+    const parsedUser = JSON.parse(userData);
+
+    if (parsedUser.emp_id || !parsedUser.username) {
+      setUser(parsedUser);
+      return;
+    }
+
+    const resolveEmpId = async () => {
+      try {
+        const res = await fetch(
+          `${apiUrl}/api/Resource-Manager/account/by-username?username=${encodeURIComponent(
+            parsedUser.username
+          )}`
+        );
+        if (!res.ok) {
+          setUser(parsedUser);
+          return;
+        }
+        const data = await res.json();
+        const updatedUser = { ...parsedUser, emp_id: data.emp_id };
+        setUser(updatedUser);
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+      } catch (err) {
+        console.error("Error resolving emp_id:", err);
+        setUser(parsedUser);
+      }
+    };
+
+    resolveEmpId();
   }, [router]);
 
   /* -------------------------------------------------------
@@ -142,6 +178,11 @@ export default function ResourcesPage() {
       const deptData = await deptResponse.json();
       setDepartments(deptData);
 
+      const getDeptNameFromList = (deptNo, list) => {
+        const dept = list.find((d) => d.dept_no === deptNo);
+        return dept ? dept.dept_name : deptNo;
+      };
+
       // Fetch managers
       const mgrResponse = await fetch(`${apiUrl}/api/Resource-Manager/managers`);
       const mgrData = await mgrResponse.json();
@@ -174,26 +215,39 @@ export default function ResourcesPage() {
         }),
       );
 
-      setEmployeesWithCapacity(employeesWithCap);
-      setEmployees(employeesWithCap);
+      const dataMgmtEmployees = employeesWithCap.filter((emp) => {
+        const deptName = getDeptNameFromList(emp.dept_no, deptData);
+        return String(deptName).toLowerCase() === DEPARTMENT_FILTER_NAME.toLowerCase();
+      });
+
+      setAllEmployeesWithCapacity(employeesWithCap);
+      setEmployeesWithCapacity(dataMgmtEmployees);
+      setEmployees(dataMgmtEmployees);
       setError("");
 
       // Build unique dropdown lists
-      setAvailableNames([...new Set(employeesWithCap.map((e) => e.emp_name).filter(Boolean))]);
-      setAvailableTitles([...new Set(employeesWithCap.map((e) => e.emp_title).filter(Boolean))]);
+      setAvailableNames([...new Set(dataMgmtEmployees.map((e) => e.emp_name).filter(Boolean))]);
+      setAvailableTitles([...new Set(dataMgmtEmployees.map((e) => e.emp_title).filter(Boolean))]);
+
+      const getReportsToNameFromEmployees = (reportsToId, employeeList, managerList) => {
+        if (reportsToId === undefined || reportsToId === null || String(reportsToId).trim() === "") {
+          return null;
+        }
+        const match = employeeList.find((emp) => String(emp.emp_id) === String(reportsToId));
+        if (match) return match.emp_name;
+        const managerMatch = managerList.find((mgr) => String(mgr.emp_id) === String(reportsToId));
+        return managerMatch ? managerMatch.emp_name : null;
+      };
 
       setAvailableReportsTo([
         ...new Set(
-          employeesWithCap
-            .map((e) => {
-              const manager = employeesWithCap.find((m) => m.emp_id === e.manager_id);
-              return manager ? manager.emp_name : null;
-            })
-            .filter(Boolean),
-        ),
+          dataMgmtEmployees
+            .map((e) => getReportsToNameFromEmployees(e.reports_to, employeesWithCap, mgrData))
+            .filter(Boolean)
+        )
       ]);
 
-      setAvailableCurrentStatuses([...new Set(employeesWithCap.map((e) => getCurrentStatus(e)).filter(Boolean))]);
+      setAvailableCurrentStatuses([...new Set(dataMgmtEmployees.map((e) => getCurrentStatus(e)).filter(Boolean))]);
     } catch (err) {
       console.error("Error fetching data:", err);
       setError("Failed to load data");
@@ -208,9 +262,9 @@ export default function ResourcesPage() {
   const applyFilters = () => {
     let filtered = [...employeesWithCapacity];
 
-    // Filter: Mine
+    // Filter: Mine (match employee by logged-in emp_id)
     if (activeFilter === "mine" && user) {
-      filtered = filtered.filter((emp) => emp.manager_id === user.emp_id);
+      filtered = filtered.filter((emp) => String(emp.emp_id) === String(user.emp_id));
     }
 
     // Filter: Active / Inactive
@@ -236,6 +290,12 @@ export default function ResourcesPage() {
       );
     }
 
+    // Filter: Data Mgmt department only
+    filtered = filtered.filter((emp) => {
+      const deptName = getDepartmentName(emp.dept_no);
+      return String(deptName).toLowerCase() === 'data mgmt';
+    });
+
     // Multi-select Name
     if (selectedNames.length > 0 && selectedNames.length < availableNames.length) {
       filtered = filtered.filter((emp) => selectedNames.includes(emp.emp_name));
@@ -246,10 +306,10 @@ export default function ResourcesPage() {
       filtered = filtered.filter((emp) => selectedTitles.includes(emp.emp_title));
     }
 
-    // Multi-select Reports To
+    // Multi-select Reports To (reports_to -> emp_id -> name)
     if (selectedReportsTo.length > 0 && selectedReportsTo.length < availableReportsTo.length) {
       filtered = filtered.filter((emp) => {
-        const managerName = getManagerName(emp.manager_id);
+        const managerName = getReportsToName(emp);
         return selectedReportsTo.includes(managerName);
       });
     }
@@ -308,11 +368,29 @@ export default function ResourcesPage() {
   };
 
   const getManagerName = (managerId) => {
-    const manager = employeesWithCapacity.find((e) => e.emp_id === managerId);
-    return manager ? manager.emp_name : "-";
+    const manager = allEmployeesWithCapacity.find(
+      (e) => String(e.emp_id) === String(managerId)
+    );
+    if (manager) return manager.emp_name;
+    const fallback = employeesWithCapacity.find((e) => String(e.emp_id) === String(managerId));
+    return fallback ? fallback.emp_name : "-";
   };
 
-  const getDirectorName = () => "Charlotte Nguyen"; // HARD-CODED FOR NOW
+  const getLevelName = (levelId) => {
+    if (levelId === undefined || levelId === null || String(levelId).trim() === "") return "";
+    const match = managers.find((mgr) => String(mgr.emp_id) === String(levelId));
+    return match ? match.emp_name : String(levelId);
+  };
+
+  const getReportsToName = (employee) => {
+    if (!employee) return "-";
+    const reportsToId = employee.reports_to;
+    if (reportsToId === undefined || reportsToId === null || String(reportsToId).trim() === "") {
+      return "-";
+    }
+    const match = allEmployeesWithCapacity.find((emp) => String(emp.emp_id) === String(reportsToId));
+    return match ? match.emp_name : "-";
+  };
 
   const getCurrentStatus = (employee) => {
     const now = new Date();
@@ -324,6 +402,70 @@ export default function ResourcesPage() {
   const getMonthValue = (employee, monthKey) => {
     if (!employee.capacity || !employee.capacity[monthKey]) return 1;
     return employee.capacity[monthKey].amount;
+  };
+
+  const startEditMonth = (employee, monthKey) => {
+    setEditingCell({ empId: employee.emp_id, monthKey });
+    setEditingValue(String(getMonthValue(employee, monthKey)));
+  };
+
+  const cancelEditMonth = () => {
+    setEditingCell(null);
+    setEditingValue('');
+  };
+
+  const saveMonthValue = async (employee, monthKey) => {
+    const raw = editingValue.trim();
+    const parsed = Number(raw);
+
+    if (raw === '' || Number.isNaN(parsed) || parsed < 0 || parsed > 1) {
+      setError('Capacity must be a number between 0 and 1');
+      return;
+    }
+
+    const existing = employee.capacity?.[monthKey] || {};
+    const updates = [
+      {
+        date: monthKey,
+        amount: parsed,
+        comments: existing.comments || ''
+      }
+    ];
+
+    try {
+      const res = await fetch(
+        `${apiUrl}/api/Resource-Manager/employees/${employee.emp_id}/capacity`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ updates })
+        }
+      );
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Unable to update capacity');
+      }
+
+      setEmployeesWithCapacity((prev) =>
+        prev.map((emp) => {
+          if (emp.emp_id !== employee.emp_id) return emp;
+          const updatedCapacity = {
+            ...(emp.capacity || {}),
+            [monthKey]: {
+              ...(emp.capacity?.[monthKey] || {}),
+              amount: parsed
+            }
+          };
+          return { ...emp, capacity: updatedCapacity };
+        })
+      );
+
+      setError('');
+      cancelEditMonth();
+    } catch (err) {
+      setError(err.message || 'Unable to update capacity');
+    }
   };
 
   const goToDashboard = () => {
@@ -514,7 +656,7 @@ export default function ResourcesPage() {
               <thead className="bg-[#017ACB] text-white sticky top-0 z-10">
                 <tr>
                   <th
-                    className="px-2 py-2 text-left font-semibold border-b border-black border-r border-white"
+                    className="px-2 py-2 text-center font-semibold border-b border-black border-r border-white sticky left-0 top-0 z-50 bg-[#017ACB]"
                     style={styles.outfitFont}
                   >
                     Edit
@@ -731,7 +873,12 @@ export default function ResourcesPage() {
                         </div>,
                       )}
                   </th>
-
+                  <th
+                    className="px-2 py-2 text-left font-semibold border-b border-black border-r border-white min-w-[130px]"
+                    style={styles.outfitFont}
+                  >
+                    Manager Level
+                  </th>
                   <th
                     className="px-2 py-2 text-left font-semibold border-b border-black border-r border-white min-w-[130px]"
                     style={styles.outfitFont}
@@ -825,7 +972,7 @@ export default function ResourcesPage() {
                 {employees.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={8 + MONTHS.length}
+                      colSpan={9 + MONTHS.length}
                       className="px-4 py-8 text-center text-black"
                       style={styles.outfitFont}
                     >
@@ -835,7 +982,7 @@ export default function ResourcesPage() {
                 ) : (
                   employees.map((employee) => (
                     <tr key={employee.emp_id} className="hover:bg-gray-50 border-b border-black">
-                      <td className="px-2 py-2 border-r border-black">
+                      <td className="px-2 py-2 border-r border-black sticky left-0 z-20 bg-white">
                         <Link
                           href={`/Resource-Manager/create_edit_Resources/EditResource?id=${employee.emp_id}`}
                           className="px-2 py-1 bg-[#017ACB] text-white text-xs rounded hover:bg-blue-700 cursor-pointer inline-block"
@@ -851,16 +998,19 @@ export default function ResourcesPage() {
                       <td className="px-2 py-2 text-black border-r border-black" style={styles.outfitFont}>
                         {employee.emp_title}
                       </td>
-                      <td className="px-2 py-2 text-gray-600 border-r border-black" style={styles.outfitFont}>
+                      <td className="px-2 py-2 text-black border-r border-black" style={styles.outfitFont}>
                         {getDepartmentName(employee.dept_no)}
                       </td>
-                      <td className="px-2 py-2 text-gray-600 border-r border-black" style={styles.outfitFont}>
-                        {getManagerName(employee.manager_id)}
+                      <td className="px-2 py-2 text-black border-r border-black" style={styles.outfitFont}>
+                        {getReportsToName(employee)}
                       </td>
-                      <td className="px-2 py-2 text-gray-600 border-r border-black" style={styles.outfitFont}>
-                        {getDirectorName()}
+                      <td className="px-2 py-2 text-black border-r border-black" style={styles.outfitFont}>
+                        {getLevelName(employee.manager_level)}
                       </td>
-                      <td className="px-2 py-2 text-gray-600 border-r border-black" style={styles.outfitFont}>
+                      <td className="px-2 py-2 text-black border-r border-black" style={styles.outfitFont}>
+                        {getLevelName(employee.director_level)}
+                      </td>
+                      <td className="px-2 py-2 text-black border-r border-black" style={styles.outfitFont}>
                         {employee.other_info || ""}
                       </td>
 
@@ -883,7 +1033,39 @@ export default function ResourcesPage() {
                           className="px-2 py-2 text-center border-r border-black text-black"
                           style={styles.outfitFont}
                         >
-                          {getMonthValue(employee, month.key)}
+                          {editingCell?.empId === employee.emp_id &&
+                          editingCell?.monthKey === month.key ? (
+                            <input
+                              type="number"
+                              min="0"
+                              max="1"
+                              step="0.5"
+                              value={editingValue}
+                              onChange={(e) => setEditingValue(e.target.value)}
+                              onBlur={() => saveMonthValue(employee, month.key)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  saveMonthValue(employee, month.key);
+                                }
+
+                                if (e.key === 'Escape') {
+                                  e.preventDefault();
+                                  cancelEditMonth();
+                                }
+                              }}
+                              autoFocus
+                              className="w-16 px-1 py-0.5 border border-gray-300 rounded text-center text-sm"
+                            />
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => startEditMonth(employee, month.key)}
+                              className="w-full text-center hover:bg-gray-100 rounded px-1 py-0.5"
+                            >
+                              {getMonthValue(employee, month.key)}
+                            </button>
+                          )}
                         </td>
                       ))}
                     </tr>
