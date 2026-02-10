@@ -481,7 +481,6 @@ export default function ResourcesPage() {
 
     return createPortal(
       <>
-        {/* optional invisible overlay to help clicks register correctly */}
         <div
           className="fixed inset-0 z-[9998]"
           onClick={() => {
@@ -499,7 +498,7 @@ export default function ResourcesPage() {
           {menu}
         </div>
       </>,
-      document.body,
+      document.body
     );
   };
 
@@ -619,17 +618,6 @@ export default function ResourcesPage() {
               </button>
             </div>
 
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded text-gray-700 text-sm"
-              style={styles.outfitFont}
-            >
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
-
             <input
               type="text"
               placeholder="Search..."
@@ -656,7 +644,7 @@ export default function ResourcesPage() {
               <thead className="bg-[#017ACB] text-white sticky top-0 z-10">
                 <tr>
                   <th
-                    className="px-2 py-2 text-center font-semibold border-b border-black border-r border-white sticky left-0 top-0 z-50 bg-[#017ACB]"
+                    className="px-2 py-2 w-16 text-center font-semibold border-b border-black border-r border-white sticky left-0 top-0 z-50 bg-[#017ACB]"
                     style={styles.outfitFont}
                   >
                     Edit
@@ -664,7 +652,7 @@ export default function ResourcesPage() {
 
                   {/* Name Filter Column */}
                   <th
-                    className="px-2 py-2 text-left font-semibold border-b border-black border-r border-white min-w-[150px] relative"
+                    className="px-2 py-2 text-left font-semibold border-b border-black border-r border-white sticky left-13 top-0 z-40 bg-[#017ACB] min-w-[150px] relative"
                     style={styles.outfitFont}
                   >
                     <div className="flex justify-between items-center">
@@ -751,7 +739,7 @@ export default function ResourcesPage() {
 
                   {/* Title Filter Column */}
                   <th
-                    className="px-2 py-2 text-left font-semibold border-b border-black border-r border-white min-w-[180px] relative"
+                    className="px-2 py-2 text-left font-semibold border-b border-black border-r border-white min-w-[150px] relative"
                     style={styles.outfitFont}
                   >
                     <div className="flex justify-between items-center">
@@ -982,7 +970,7 @@ export default function ResourcesPage() {
                 ) : (
                   employees.map((employee) => (
                     <tr key={employee.emp_id} className="hover:bg-gray-50 border-b border-black">
-                      <td className="px-2 py-2 border-r border-black sticky left-0 z-20 bg-white">
+                      <td className="px-2 py-2 w-16 border-r border-black sticky left-0 z-5 bg-white">
                         <Link
                           href={`/Resource-Manager/create_edit_Resources/EditResource?id=${employee.emp_id}`}
                           className="px-2 py-1 bg-[#017ACB] text-white text-xs rounded hover:bg-blue-700 cursor-pointer inline-block"
@@ -992,7 +980,7 @@ export default function ResourcesPage() {
                         </Link>
                       </td>
 
-                      <td className="px-2 py-2 text-black border-r border-black" style={styles.outfitFont}>
+                      <td className="px-2 py-2 text-black border-r border-black sticky left-13 z-5 bg-white" style={styles.outfitFont}>
                         {employee.emp_name}
                       </td>
                       <td className="px-2 py-2 text-black border-r border-black" style={styles.outfitFont}>
@@ -1039,7 +1027,7 @@ export default function ResourcesPage() {
                               type="number"
                               min="0"
                               max="1"
-                              step="0.5"
+                              step="0.25"
                               value={editingValue}
                               onChange={(e) => setEditingValue(e.target.value)}
                               onBlur={() => saveMonthValue(employee, month.key)}

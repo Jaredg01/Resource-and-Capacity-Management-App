@@ -11,6 +11,7 @@ export default function EditResourceModal() {
   const [departments, setDepartments] = useState([]);
   const [managers, setManagers] = useState([]);
   const [directorLevelOptions, setDirectorLevelOptions] = useState([]);
+  const [employeesList, setEmployeesList] = useState([]);
   const [employee, setEmployee] = useState(null);
   const [statusValue, setStatusValue] = useState('Active');
 
@@ -44,7 +45,7 @@ export default function EditResourceModal() {
       emp_name: data.emp_name || '',
       emp_title: data.emp_title || '',
       dept_no: data.dept_no || '',
-      manager_id: data.manager_id || '',
+      manager_id: data.manager_id || data.reports_to || '',
       manager_level: data.manager_level || '',
       director_level: data.director_level || '',
       other_info: data.other_info || ''
@@ -65,8 +66,19 @@ export default function EditResourceModal() {
   const fetchDirectorLevels = async () => {
     const res = await fetch('http://localhost:3001/api/Resource-Manager/employees');
     const data = await res.json();
-    const unique = [...new Set((data || []).map(e => e.director_level).filter(Boolean))];
-    setDirectorLevelOptions(unique);
+    setEmployeesList(data || []);
+    const uniqueDirector = [...new Set((data || []).map(e => e.director_level).filter(Boolean))];
+    setDirectorLevelOptions(uniqueDirector);
+  };
+
+  const getUniqueManagerLevels = () => (
+    [...new Set(employeesList.map((e) => e.manager_level).filter(Boolean))]
+  );
+
+  const getEmployeeNameById = (empId) => {
+    if (empId === undefined || empId === null || String(empId).trim() === '') return '';
+    const match = employeesList.find((emp) => String(emp.emp_id) === String(empId));
+    return match ? match.emp_name : String(empId);
   };
 
   const handleEdit = async (e) => {
@@ -152,9 +164,23 @@ export default function EditResourceModal() {
                 onChange={(e) => setFormData({ ...formData, manager_id: e.target.value })}
               >
                 <option value="" className="text-gray-900 bg-white">Select Manager</option>
-                {managers.map(m => (
-                  <option key={m.emp_id} value={m.emp_id} className="text-gray-900 bg-white">
-                    {m.emp_name}
+                {[...new Map(
+                  [
+                    ...managers
+                      .filter((manager) => {
+                        const accTypeId =
+                          manager.acc_type_id ?? manager.account?.acc_type_id ?? manager.accTypeId;
+                        if (accTypeId === undefined || accTypeId === null) return false;
+                        return String(accTypeId) === '1';
+                      })
+                      .map((m) => [String(m.emp_id), getEmployeeNameById(m.emp_id)]),
+                    formData.manager_id
+                      ? [String(formData.manager_id), getEmployeeNameById(formData.manager_id)]
+                      : null
+                  ].filter(Boolean)
+                ).entries()].map(([id, name]) => (
+                  <option key={id} value={id} className="text-gray-900 bg-white">
+                    {name}
                   </option>
                 ))}
               </select>
@@ -169,13 +195,18 @@ export default function EditResourceModal() {
                 onChange={(e) => setFormData({ ...formData, manager_level: e.target.value })}
               >
                 <option value="" className="text-gray-900 bg-white">Select Manager Level</option>
-                {[...new Set([...MANAGER_LEVEL_OPTIONS, formData.manager_level])]
-                  .filter(Boolean)
-                  .map(l => (
-                    <option key={l} className="text-gray-900 bg-white">
-                      {l}
-                    </option>
-                  ))}
+                {[...new Map(
+                  [
+                    ...getUniqueManagerLevels().map((levelId) => [String(levelId), getEmployeeNameById(levelId)]),
+                    formData.manager_level
+                      ? [String(formData.manager_level), getEmployeeNameById(formData.manager_level)]
+                      : null
+                  ].filter(Boolean)
+                ).entries()].map(([id, name]) => (
+                  <option key={id} value={id} className="text-gray-900 bg-white">
+                    {name}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -188,13 +219,18 @@ export default function EditResourceModal() {
                 onChange={(e) => setFormData({ ...formData, director_level: e.target.value })}
               >
                 <option value="" className="text-gray-900 bg-white">Select Director Level</option>
-                {[...new Set([...DIRECTOR_LEVEL_OPTIONS, ...directorLevelOptions, formData.director_level])]
-                  .filter(Boolean)
-                  .map(l => (
-                    <option key={l} className="text-gray-900 bg-white">
-                      {l}
-                    </option>
-                  ))}
+                {[...new Map(
+                  [
+                    ...directorLevelOptions.map((levelId) => [String(levelId), getEmployeeNameById(levelId)]),
+                    formData.director_level
+                      ? [String(formData.director_level), getEmployeeNameById(formData.director_level)]
+                      : null
+                  ].filter(Boolean)
+                ).entries()].map(([id, name]) => (
+                  <option key={id} value={id} className="text-gray-900 bg-white">
+                    {name}
+                  </option>
+                ))}
               </select>
             </div>
 
