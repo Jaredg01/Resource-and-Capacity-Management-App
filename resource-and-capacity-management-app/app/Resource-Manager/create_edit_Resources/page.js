@@ -1,119 +1,144 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { createPortal } from "react-dom";
 
 /* ---------------------------------------------------------
    Shared Style Object
-   ---------------------------------------------------------
-   - Centralizes typography styling for consistency
-   - Used across headings, labels, and UI elements
 --------------------------------------------------------- */
 const styles = {
-  outfitFont: { fontFamily: 'Outfit, sans-serif' }
+  outfitFont: { fontFamily: "Outfit, sans-serif" },
 };
 
 /* ---------------------------------------------------------
    Month Definitions
-   ---------------------------------------------------------
-   - Used for capacity display across the UI
-   - Keys follow YYYYMM format for easy comparison
 --------------------------------------------------------- */
 const MONTHS = [
-  { key: 202501, label: 'Jan-25' },
-  { key: 202502, label: 'Feb-25' },
-  { key: 202503, label: 'Mar-25' },
-  { key: 202504, label: 'Apr-25' },
-  { key: 202505, label: 'May-25' },
-  { key: 202506, label: 'Jun-25' },
-  { key: 202507, label: 'Jul-25' },
-  { key: 202508, label: 'Aug-25' },
-  { key: 202509, label: 'Sep-25' },
-  { key: 202510, label: 'Oct-25' },
-  { key: 202511, label: 'Nov-25' },
-  { key: 202512, label: 'Dec-25' },
-  { key: 202601, label: 'Jan-26' },
-  { key: 202602, label: 'Feb-26' },
-  { key: 202603, label: 'Mar-26' },
-  { key: 202604, label: 'Apr-26' }
+  { key: 202501, label: "Jan-25" },
+  { key: 202502, label: "Feb-25" },
+  { key: 202503, label: "Mar-25" },
+  { key: 202504, label: "Apr-25" },
+  { key: 202505, label: "May-25" },
+  { key: 202506, label: "Jun-25" },
+  { key: 202507, label: "Jul-25" },
+  { key: 202508, label: "Aug-25" },
+  { key: 202509, label: "Sep-25" },
+  { key: 202510, label: "Oct-25" },
+  { key: 202511, label: "Nov-25" },
+  { key: 202512, label: "Dec-25" },
+  { key: 202601, label: "Jan-26" },
+  { key: 202602, label: "Feb-26" },
+  { key: 202603, label: "Mar-26" },
+  { key: 202604, label: "Apr-26" },
 ];
+
+const DEPARTMENT_FILTER_NAME = "Data Mgmt";
 
 export default function ResourcesPage() {
   /* -------------------------------------------------------
      Core Data State
-     -------------------------------------------------------
-     employees              → filtered list displayed in UI
-     employeesWithCapacity → full dataset including capacity
-     departments           → department lookup table
-     managers              → manager lookup table
-     user                  → logged‑in user from localStorage
   ------------------------------------------------------- */
   const [employees, setEmployees] = useState([]);
   const [employeesWithCapacity, setEmployeesWithCapacity] = useState([]);
+  const [allEmployeesWithCapacity, setAllEmployeesWithCapacity] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [managers, setManagers] = useState([]);
   const [user, setUser] = useState(null);
 
   /* -------------------------------------------------------
      UI State
-     -------------------------------------------------------
-     loading       → global loading indicator
-     error         → error message for API failures
-     activeFilter  → "all" or "mine"
-     statusFilter  → "all", "active", "inactive"
-     searchTerm    → text search for name/title
   ------------------------------------------------------- */
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [activeFilter, setActiveFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [error, setError] = useState("");
+  const [activeFilter, setActiveFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
 
-  /* -------------------------------------------------------
-     Modal + Form State
-     -------------------------------------------------------
-     showCreateModal   → controls create modal visibility
-     showEditModal     → controls edit modal visibility
-     selectedEmployee  → employee being edited
-     formData          → create/edit form fields
-  ------------------------------------------------------- */
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [selectedEmployee, setSelectedEmployee] = useState(null);
+  // Multi-select filter states
+  const [selectedNames, setSelectedNames] = useState([]);
+  const [selectedTitles, setSelectedTitles] = useState([]);
+  const [selectedReportsTo, setSelectedReportsTo] = useState([]);
+  const [selectedCurrentStatuses, setSelectedCurrentStatuses] = useState([]);
 
-  const [formData, setFormData] = useState({
-    emp_name: '',
-    emp_title: '',
-    dept_no: '',
-    manager_id: '',
-    other_info: ''
-  });
+  const [nameSort, setNameSort] = useState("none");
+
+  // Dropdown visibility toggles
+  const [showNameMenu, setShowNameMenu] = useState(false);
+  const [showTitleMenu, setShowTitleMenu] = useState(false);
+  const [showReportsToMenu, setShowReportsToMenu] = useState(false);
+  const [showCurrentStatusMenu, setShowCurrentStatusMenu] = useState(false);
+
+  // Dropdown absolute positioning
+  const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
+
+  // Unique dropdown option lists (extracted from DB)
+  const [availableNames, setAvailableNames] = useState([]);
+  const [availableTitles, setAvailableTitles] = useState([]);
+  const [availableReportsTo, setAvailableReportsTo] = useState([]);
+  const [availableCurrentStatuses, setAvailableCurrentStatuses] = useState([]);
+
+  // ✅ Portal ready state (prevents SSR crash)
+  const [portalReady, setPortalReady] = useState(false);
+
+  // Inline month editing
+  const [editingCell, setEditingCell] = useState(null); // { empId, monthKey }
+  const [editingValue, setEditingValue] = useState("");
+
 
   const router = useRouter();
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  const apiUrl = "http://localhost:3001";
+
+  /* -------------------------------------------------------
+     Effect: Enable Portal (client-only)
+  ------------------------------------------------------- */
+  useEffect(() => {
+    setPortalReady(true);
+  }, []);
 
   /* -------------------------------------------------------
      Effect: Load User from LocalStorage
-     -------------------------------------------------------
-     - Redirects to login if no user is stored
-     - Stores parsed user object in state
   ------------------------------------------------------- */
   useEffect(() => {
-    const userData = localStorage.getItem('user');
+    const userData = localStorage.getItem("user");
     if (!userData) {
-      router.push('/login');
+      router.push("/login");
       return;
     }
-    setUser(JSON.parse(userData));
+    const parsedUser = JSON.parse(userData);
+
+    if (parsedUser.emp_id || !parsedUser.username) {
+      setUser(parsedUser);
+      return;
+    }
+
+    const resolveEmpId = async () => {
+      try {
+        const res = await fetch(
+          `${apiUrl}/api/Resource-Manager/account/by-username?username=${encodeURIComponent(
+            parsedUser.username
+          )}`
+        );
+        if (!res.ok) {
+          setUser(parsedUser);
+          return;
+        }
+        const data = await res.json();
+        const updatedUser = { ...parsedUser, emp_id: data.emp_id };
+        setUser(updatedUser);
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+      } catch (err) {
+        console.error("Error resolving emp_id:", err);
+        setUser(parsedUser);
+      }
+    };
+
+    resolveEmpId();
   }, [router]);
 
   /* -------------------------------------------------------
      Effect: Initial Data Load
-     -------------------------------------------------------
-     - Fetches employees, departments, managers
-     - Fetches capacity for each employee
-     - Builds unified dataset
   ------------------------------------------------------- */
   useEffect(() => {
     fetchAllData();
@@ -121,42 +146,45 @@ export default function ResourcesPage() {
 
   /* -------------------------------------------------------
      Effect: Apply Filters When Dependencies Change
-     -------------------------------------------------------
-     - Runs whenever:
-         employeesWithCapacity changes
-         activeFilter changes
-         statusFilter changes
-         searchTerm changes
-         user changes
   ------------------------------------------------------- */
   useEffect(() => {
     applyFilters();
-  }, [employeesWithCapacity, activeFilter, statusFilter, searchTerm, user]);
+  }, [
+    employeesWithCapacity,
+    activeFilter,
+    statusFilter,
+    searchTerm,
+    user,
+    nameSort,
+    selectedNames,
+    selectedTitles,
+    selectedReportsTo,
+    selectedCurrentStatuses,
+  ]);
 
   /* -------------------------------------------------------
      Function: fetchAllData
-     -------------------------------------------------------
-     - Loads all employees
-     - Loads departments + managers
-     - Loads capacity for each employee
-     - Merges capacity into employee objects
-     - Handles loading + error states
   ------------------------------------------------------- */
   const fetchAllData = async () => {
     try {
       setLoading(true);
 
       // Fetch employees
-      const empResponse = await fetch(`${apiUrl}/api/employees`);
+      const empResponse = await fetch(`${apiUrl}/api/Resource-Manager/employees`);
       const empData = await empResponse.json();
 
       // Fetch departments
-      const deptResponse = await fetch(`${apiUrl}/api/departments`);
+      const deptResponse = await fetch(`${apiUrl}/api/Resource-Manager/departments`);
       const deptData = await deptResponse.json();
       setDepartments(deptData);
 
+      const getDeptNameFromList = (deptNo, list) => {
+        const dept = list.find((d) => d.dept_no === deptNo);
+        return dept ? dept.dept_name : deptNo;
+      };
+
       // Fetch managers
-      const mgrResponse = await fetch(`${apiUrl}/api/managers`);
+      const mgrResponse = await fetch(`${apiUrl}/api/Resource-Manager/managers`);
       const mgrData = await mgrResponse.json();
       setManagers(mgrData);
 
@@ -164,17 +192,16 @@ export default function ResourcesPage() {
       const employeesWithCap = await Promise.all(
         empData.map(async (emp) => {
           try {
-            const capResponse = await fetch(`${apiUrl}/api/employees/${emp.emp_id}/capacity`);
+            const capResponse = await fetch(`${apiUrl}/api/Resource-Manager/employees/${emp.emp_id}/capacity`);
             if (capResponse.ok) {
               const capData = await capResponse.json();
 
-              // Build capacity lookup table by month
               const capacityByMonth = {};
-              capData.forEach(cap => {
+              capData.forEach((cap) => {
                 capacityByMonth[cap.date] = {
                   amount: cap.amount,
                   status: cap.current_status,
-                  comments: cap.comments
+                  comments: cap.comments,
                 };
               });
 
@@ -184,17 +211,46 @@ export default function ResourcesPage() {
             console.error(`Error fetching capacity for emp ${emp.emp_id}:`, err);
           }
 
-          // Default: no capacity data
           return { ...emp, capacity: {} };
-        })
+        }),
       );
 
-      setEmployeesWithCapacity(employeesWithCap);
-      setEmployees(employeesWithCap);
-      setError('');
+      const dataMgmtEmployees = employeesWithCap.filter((emp) => {
+        const deptName = getDeptNameFromList(emp.dept_no, deptData);
+        return String(deptName).toLowerCase() === DEPARTMENT_FILTER_NAME.toLowerCase();
+      });
+
+      setAllEmployeesWithCapacity(employeesWithCap);
+      setEmployeesWithCapacity(dataMgmtEmployees);
+      setEmployees(dataMgmtEmployees);
+      setError("");
+
+      // Build unique dropdown lists
+      setAvailableNames([...new Set(dataMgmtEmployees.map((e) => e.emp_name).filter(Boolean))]);
+      setAvailableTitles([...new Set(dataMgmtEmployees.map((e) => e.emp_title).filter(Boolean))]);
+
+      const getReportsToNameFromEmployees = (reportsToId, employeeList, managerList) => {
+        if (reportsToId === undefined || reportsToId === null || String(reportsToId).trim() === "") {
+          return null;
+        }
+        const match = employeeList.find((emp) => String(emp.emp_id) === String(reportsToId));
+        if (match) return match.emp_name;
+        const managerMatch = managerList.find((mgr) => String(mgr.emp_id) === String(reportsToId));
+        return managerMatch ? managerMatch.emp_name : null;
+      };
+
+      setAvailableReportsTo([
+        ...new Set(
+          dataMgmtEmployees
+            .map((e) => getReportsToNameFromEmployees(e.reports_to, employeesWithCap, mgrData))
+            .filter(Boolean)
+        )
+      ]);
+
+      setAvailableCurrentStatuses([...new Set(dataMgmtEmployees.map((e) => getCurrentStatus(e)).filter(Boolean))]);
     } catch (err) {
-      console.error('Error fetching data:', err);
-      setError('Failed to load data');
+      console.error("Error fetching data:", err);
+      setError("Failed to load data");
     } finally {
       setLoading(false);
     }
@@ -202,776 +258,816 @@ export default function ResourcesPage() {
 
   /* -------------------------------------------------------
      Function: applyFilters
-     -------------------------------------------------------
-     - Applies:
-         1. "Mine" filter (manager_id === user.emp_id)
-         2. Active/Inactive status filter
-         3. Search filter (name/title)
-     - Updates employees list shown in UI
   ------------------------------------------------------- */
   const applyFilters = () => {
     let filtered = [...employeesWithCapacity];
 
-    // Filter: Mine (employees managed by logged‑in user)
-    if (activeFilter === 'mine' && user) {
-      filtered = filtered.filter(emp => emp.manager_id === user.emp_id);
+    // Filter: Mine (match employee by logged-in emp_id)
+    if (activeFilter === "mine" && user) {
+      filtered = filtered.filter((emp) => String(emp.emp_id) === String(user.emp_id));
     }
 
     // Filter: Active / Inactive
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(emp => {
+    if (statusFilter !== "all") {
+      filtered = filtered.filter((emp) => {
         const now = new Date();
         const currentDate = now.getFullYear() * 100 + (now.getMonth() + 1);
-
         const currentCap = emp.capacity[currentDate];
 
-        if (statusFilter === 'active') {
-          return !currentCap || currentCap.status === 'Active';
+        if (statusFilter === "active") {
+          return !currentCap || currentCap.status === "Active";
         } else {
-          return currentCap && currentCap.status === 'Inactive';
+          return currentCap && currentCap.status === "Inactive";
         }
       });
     }
 
-    // Filter: Search by name or title
+    // Search
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(emp =>
-        emp.emp_name.toLowerCase().includes(term) ||
-        emp.emp_title.toLowerCase().includes(term)
+      filtered = filtered.filter(
+        (emp) => emp.emp_name.toLowerCase().includes(term) || emp.emp_title.toLowerCase().includes(term),
       );
+    }
+
+    // Filter: Data Mgmt department only
+    filtered = filtered.filter((emp) => {
+      const deptName = getDepartmentName(emp.dept_no);
+      return String(deptName).toLowerCase() === 'data mgmt';
+    });
+
+    // Multi-select Name
+    if (selectedNames.length > 0 && selectedNames.length < availableNames.length) {
+      filtered = filtered.filter((emp) => selectedNames.includes(emp.emp_name));
+    }
+
+    // Multi-select Title
+    if (selectedTitles.length > 0 && selectedTitles.length < availableTitles.length) {
+      filtered = filtered.filter((emp) => selectedTitles.includes(emp.emp_title));
+    }
+
+    // Multi-select Reports To (reports_to -> emp_id -> name)
+    if (selectedReportsTo.length > 0 && selectedReportsTo.length < availableReportsTo.length) {
+      filtered = filtered.filter((emp) => {
+        const managerName = getReportsToName(emp);
+        return selectedReportsTo.includes(managerName);
+      });
+    }
+
+    // Multi-select Current Status
+    if (selectedCurrentStatuses.length > 0 && selectedCurrentStatuses.length < availableCurrentStatuses.length) {
+      filtered = filtered.filter((emp) => {
+        const status = getCurrentStatus(emp);
+        return selectedCurrentStatuses.includes(status);
+      });
+    }
+
+    if (nameSort === 'az') {
+    filtered.sort((a, b) =>
+    a.emp_name.localeCompare(b.emp_name)
+      );
+    }
+
+    if (nameSort === 'za') {
+      filtered.sort((a, b) =>
+      b.emp_name.localeCompare(a.emp_name)
+     );
     }
 
     setEmployees(filtered);
   };
 
   /* -------------------------------------------------------
-     Function: handleCreate
-     -------------------------------------------------------
-     - Sends POST request to create new employee
-     - Resets form + reloads data
+     Toggle Helper
   ------------------------------------------------------- */
-  const handleCreate = async (e) => {
-    e.preventDefault();
-    try {
-      const response = await fetch(`${apiUrl}/api/employees`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setError(data.error || 'Failed to create employee');
-        return;
-      }
-
-      setShowCreateModal(false);
-      setFormData({ emp_name: '', emp_title: '', dept_no: '', manager_id: '', other_info: '' });
-      fetchAllData();
-    } catch (err) {
-      console.error('Error creating employee:', err);
-      setError('Failed to create employee');
-    }
+  const toggleSelection = (value, setFn, current) => {
+    setFn(current.includes(value) ? current.filter((v) => v !== value) : [...current, value]);
   };
 
   /* -------------------------------------------------------
-     Function: handleEdit
-     -------------------------------------------------------
-     - Sends PUT request to update employee
-     - Resets modal + reloads data
+     Close All Dropdowns on Outside Click
   ------------------------------------------------------- */
-  const handleEdit = async (e) => {
-    e.preventDefault();
-    if (!selectedEmployee) return;
+  useEffect(() => {
+    const handleClickOutside = () => {
+      setShowNameMenu(false);
+      setShowTitleMenu(false);
+      setShowReportsToMenu(false);
+      setShowCurrentStatusMenu(false);
+    };
+
+    window.addEventListener("click", handleClickOutside);
+    return () => window.removeEventListener("click", handleClickOutside);
+  }, []);
+
+  /* ---------------------------------------------------------
+     Helpers
+  --------------------------------------------------------- */
+  const getDepartmentName = (deptNo) => {
+    const dept = departments.find((d) => d.dept_no === deptNo);
+    return dept ? dept.dept_name : deptNo;
+  };
+
+  const getManagerName = (managerId) => {
+    const manager = allEmployeesWithCapacity.find(
+      (e) => String(e.emp_id) === String(managerId)
+    );
+    if (manager) return manager.emp_name;
+    const fallback = employeesWithCapacity.find((e) => String(e.emp_id) === String(managerId));
+    return fallback ? fallback.emp_name : "-";
+  };
+
+  const getLevelName = (levelId) => {
+    if (levelId === undefined || levelId === null || String(levelId).trim() === "") return "";
+    const match = managers.find((mgr) => String(mgr.emp_id) === String(levelId));
+    return match ? match.emp_name : String(levelId);
+  };
+
+  const getReportsToName = (employee) => {
+    if (!employee) return "-";
+    const reportsToId = employee.reports_to;
+    if (reportsToId === undefined || reportsToId === null || String(reportsToId).trim() === "") {
+      return "-";
+    }
+    const match = allEmployeesWithCapacity.find((emp) => String(emp.emp_id) === String(reportsToId));
+    return match ? match.emp_name : "-";
+  };
+
+  const getCurrentStatus = (employee) => {
+    const now = new Date();
+    const currentDate = now.getFullYear() * 100 + (now.getMonth() + 1);
+    const cap = employee.capacity ? employee.capacity[currentDate] : null;
+    return cap ? cap.status : "Active";
+  };
+
+  const getMonthValue = (employee, monthKey) => {
+    if (!employee.capacity || !employee.capacity[monthKey]) return 1;
+    return employee.capacity[monthKey].amount;
+  };
+
+  const startEditMonth = (employee, monthKey) => {
+    setEditingCell({ empId: employee.emp_id, monthKey });
+    setEditingValue(String(getMonthValue(employee, monthKey)));
+  };
+
+  const cancelEditMonth = () => {
+    setEditingCell(null);
+    setEditingValue('');
+  };
+
+  const saveMonthValue = async (employee, monthKey) => {
+    const raw = editingValue.trim();
+    const parsed = Number(raw);
+
+    if (raw === '' || Number.isNaN(parsed) || parsed < 0 || parsed > 1) {
+      setError('Capacity must be a number between 0 and 1');
+      return;
+    }
+
+    const existing = employee.capacity?.[monthKey] || {};
+    const updates = [
+      {
+        date: monthKey,
+        amount: parsed,
+        comments: existing.comments || ''
+      }
+    ];
 
     try {
-      const response = await fetch(`${apiUrl}/api/employees/${selectedEmployee.emp_id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
+      const res = await fetch(
+        `${apiUrl}/api/Resource-Manager/employees/${employee.emp_id}/capacity`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ updates })
+        }
+      );
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        setError(data.error || 'Failed to update employee');
-        return;
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Unable to update capacity');
       }
 
-      setShowEditModal(false);
-      setSelectedEmployee(null);
-      setFormData({ emp_name: '', emp_title: '', dept_no: '', manager_id: '', other_info: '' });
-      fetchAllData();
+      setEmployeesWithCapacity((prev) =>
+        prev.map((emp) => {
+          if (emp.emp_id !== employee.emp_id) return emp;
+          const updatedCapacity = {
+            ...(emp.capacity || {}),
+            [monthKey]: {
+              ...(emp.capacity?.[monthKey] || {}),
+              amount: parsed
+            }
+          };
+          return { ...emp, capacity: updatedCapacity };
+        })
+      );
+
+      setError('');
+      cancelEditMonth();
     } catch (err) {
-      console.error('Error updating employee:', err);
-      setError('Failed to update employee');
+      setError(err.message || 'Unable to update capacity');
     }
   };
 
-  /* -------------------------------------------------------
-     Function: handleStatusChange
-     -------------------------------------------------------
-     - Sends PATCH request to update employee status
-     - Reloads data after update
-  ------------------------------------------------------- */
-  const handleStatusChange = async (empId, newStatus) => {
-    try {
-      const response = await fetch(`${apiUrl}/api/employees/${empId}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus })
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        setError(data.error || 'Failed to update status');
-        return;
-      }
-
-      setShowEditModal(false);
-      setSelectedEmployee(null);
-      fetchAllData();
-    } catch (err) {
-      console.error('Error updating status:', err);
-      setError('Failed to update status');
-    }
+  const goToDashboard = () => {
+    router.push("/Resource-Manager/dashboard");
   };
 
-  /* -------------------------------------------------------
-     Function: openEditModal
-     -------------------------------------------------------
-     - Preloads selected employee data into form
-     - Opens edit modal
-  ------------------------------------------------------- */
-  const openEditModal = (employee) => {
-    setSelectedEmployee(employee);
-    setFormData({
-      emp_name: employee.emp_name,
-      emp_title: employee.emp_title,
-      dept_no: employee.dept_no,
-      manager_id: employee.manager_id || '',
-      other_info: employee.other_info || ''
-    });
-    setShowEditModal(true);
+  /* ---------------------------------------------------------
+     ✅ Dropdown Portal Renderer
+     - This fixes clipping + invisible-but-clickable menus
+  --------------------------------------------------------- */
+  const renderDropdownPortal = (menu) => {
+    if (!portalReady) return null;
+
+    return createPortal(
+      <>
+        <div
+          className="fixed inset-0 z-[9998]"
+          onClick={() => {
+            setShowNameMenu(false);
+            setShowTitleMenu(false);
+            setShowReportsToMenu(false);
+            setShowCurrentStatusMenu(false);
+          }}
+        />
+        <div
+          className="fixed z-[9999]"
+          style={{ top: menuPosition.y, left: menuPosition.x }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {menu}
+        </div>
+      </>,
+      document.body
+    );
   };
- 
- /* ---------------------------------------------------------
-   Helper: Get Department Name
-   ---------------------------------------------------------
-   - Looks up a department by its dept_no
-   - Returns the department name if found
-   - Falls back to the raw dept_no if no match exists
---------------------------------------------------------- */
-const getDepartmentName = (deptNo) => {
-  const dept = departments.find(d => d.dept_no === deptNo);
-  return dept ? dept.dept_name : deptNo;
-};
 
-/* ---------------------------------------------------------
-   Helper: Get Manager Name
-   ---------------------------------------------------------
-   - Finds an employee whose emp_id matches managerId
-   - Returns the manager's full name
-   - Returns "-" if no matching manager is found
---------------------------------------------------------- */
-const getManagerName = (managerId) => {
-  const manager = employeesWithCapacity.find(e => e.emp_id === managerId);
-  return manager ? manager.emp_name : '-';
-};
-
-/* ---------------------------------------------------------
-   Helper: Get Director Name
-   ---------------------------------------------------------
-   - Currently returns a static director name
-   - Placeholder for future dynamic lookup
---------------------------------------------------------- */
-const getDirectorName = () => {
-  return 'Charlotte Nguyen';
-};
-
-/* ---------------------------------------------------------
-   Helper: Get Current Status
-   ---------------------------------------------------------
-   - Determines the employee's status for the current month
-   - Uses YYYYMM format to match capacity records
-   - Defaults to "Active" if no capacity record exists
---------------------------------------------------------- */
-const getCurrentStatus = (employee) => {
-  const now = new Date();
-  const currentDate = now.getFullYear() * 100 + (now.getMonth() + 1);
-
-  const cap = employee.capacity ? employee.capacity[currentDate] : null;
-  return cap ? cap.status : 'Active';
-};
-
-/* ---------------------------------------------------------
-   Helper: Get Monthly Capacity Value
-   ---------------------------------------------------------
-   - Returns the capacity amount for a given monthKey
-   - Defaults to 1 if no capacity record exists
-   - Ensures UI always has a numeric value to display
---------------------------------------------------------- */
-const getMonthValue = (employee, monthKey) => {
-  if (!employee.capacity || !employee.capacity[monthKey]) {
-    return 1;
+  /* ---------------------------------------------------------
+     Loading States
+  --------------------------------------------------------- */
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
   }
-  return employee.capacity[monthKey].amount;
-};
 
-/* ---------------------------------------------------------
-   Navigation: Return to Dashboard
-   ---------------------------------------------------------
-   - Redirects the user back to the dashboard page
-   - Used by header logo click
---------------------------------------------------------- */
-const goToDashboard = () => {
-  router.push('/dashboard');
-};
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
-/* ---------------------------------------------------------
-   Loading State: No User Loaded
-   ---------------------------------------------------------
-   - Shows a centered spinner while user data is loading
-   - Prevents rendering protected content prematurely
---------------------------------------------------------- */
-if (!user) {
+  /* ---------------------------------------------------------
+     Main Render
+  --------------------------------------------------------- */
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-    </div>
-  );
-}
-
-/* ---------------------------------------------------------
-   Loading State: Data Fetch in Progress
-   ---------------------------------------------------------
-   - Displays a spinner while employees/capacity load
---------------------------------------------------------- */
-if (loading) {
-  return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-    </div>
-  );
-}
-
-/* ---------------------------------------------------------
-   Main Render
-   ---------------------------------------------------------
-   - Header with branding + navigation
-   - User profile shortcut
-   - Page content rendered below this block
---------------------------------------------------------- */
-return (
-  <div className="min-h-screen bg-gray-50">
-    <header className="bg-[#017ACB] shadow-sm">
-      <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-
-          {/* Logo + App Name (Clickable → Dashboard) */}
-          <div className="flex items-center cursor-pointer" onClick={goToDashboard}>
-            <img src="/CapstoneDynamicsLogo.png" alt="Logo" className="h-12 w-auto" />
-            <div className="flex flex-col ml-3">
-              <h1 className="text-2xl font-bold text-white leading-tight" style={styles.outfitFont}>
+    <div className="min-h-screen bg-gray-50">
+      <header className="bg-[#017ACB] shadow-sm w-full relative">
+        <div className="px-4 sm:px-6 lg:px-8 w-full">
+          <div className="relative flex items-center h-[clamp(4.5rem,5vw,5.5rem)] w-full">
+            <div
+              className="flex items-center cursor-pointer flex-none"
+              onClick={() => router.push("/Resource-Manager/dashboard")}
+            >
+              <img src="/CapstoneDynamicsLogo.png" alt="Logo" className="w-auto h-[clamp(3.2rem,3.8vw,4rem)]" />
+              <h1
+                className="font-bold text-white leading-tight ml-4 text-[clamp(1.6rem,1.7vw,2rem)]"
+                style={styles.outfitFont}
+              >
                 Capstone Dynamics
               </h1>
             </div>
-          </div>
 
-          {/* Centered Title */}
-          <div className="flex flex-col items-center">
-            <h1 className="text-xl font-bold text-white leading-tight" style={styles.outfitFont}>
-              Resource & Capacity
-            </h1>
-            <h2 className="text-xl font-bold text-white leading-tight" style={styles.outfitFont}>
-              Management Planner
-            </h2>
-          </div>
+            <div className="absolute left-1/2 -translate-x-1/2 text-center">
+              <h1
+                className="font-bold text-white leading-tight text-[clamp(1.2rem,1.3vw,1.6rem)]"
+                style={styles.outfitFont}
+              >
+                Resource & Capacity Management Planner
+              </h1>
+            </div>
 
-          {/* User Info + Profile Shortcut */}
-          <div className="flex items-center gap-4">
-            <span className="text-white font-semibold" style={styles.outfitFont}>
-              {user?.username || ''}
-            </span>
-
-            <div
-              onClick={() => router.push('/Profile/view-profile')}
-              className="w-10 h-10 rounded-full bg-white flex items-center justify-center overflow-hidden hover:opacity-90 transition cursor-pointer"
-              title="View Profile"
-            >
-              <span className="text-[#017ACB] font-bold text-lg">
-                {user?.username?.charAt(0)?.toUpperCase() || ''}
+            <div className="flex items-center gap-4 ml-auto flex-none">
+              <span className="font-semibold text-white text-[clamp(1rem,1.15vw,1.25rem)]" style={styles.outfitFont}>
+                {user?.username || ""}
               </span>
+
+              <div
+                onClick={() => router.push("/Resource-Manager/Profile/view-profile")}
+                className="rounded-full bg-white flex items-center justify-center cursor-pointer hover:opacity-90 transition
+                           w-[clamp(2.4rem,2.8vw,3.0rem)] h-[clamp(2.4rem,2.8vw,3.0rem)]"
+              >
+                <span className="text-[#017ACB] font-bold text-[clamp(1.1rem,1.3vw,1.5rem)]">
+                  {user?.username?.charAt(0)?.toUpperCase() || ""}
+                </span>
+              </div>
             </div>
           </div>
-
         </div>
-      </div>
-    </header>
- 
-    <main className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      </header>
 
-  {/* -----------------------------------------------------
-      Page Header
-      -----------------------------------------------------
-      - Displays the page title
-      - Includes a button to return to the dashboard
-  ----------------------------------------------------- */}
-  <div className="flex justify-between items-center mb-4">
-    <h2 className="text-2xl text-gray-900" style={styles.outfitFont}>
-      Data Management - Resource Availability by Month
-    </h2>
+      <main className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="flex items-center gap-4 mb-4">
+          <h2 className="text-2xl text-gray-900" style={styles.outfitFont}>
+            Data Management - Resource Availability by Month
+          </h2>
 
-    <button
-      onClick={goToDashboard}
-      className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition cursor-pointer"
-      style={styles.outfitFont}
-    >
-      ← Back to Dashboard
-    </button>
-  </div>
+          <button
+            onClick={goToDashboard}
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition cursor-pointer"
+            style={styles.outfitFont}
+          >
+            ← Back to Dashboard
+          </button>
+        </div>
 
-  {/* -----------------------------------------------------
-      Error Banner
-      -----------------------------------------------------
-      - Displays API or validation errors
-      - Includes dismiss button to clear error state
-  ----------------------------------------------------- */}
-  {error && (
-    <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
-      {error}
-      <button onClick={() => setError('')} className="ml-4 text-red-900 font-bold">×</button>
-    </div>
-  )}
-
-  {/* -----------------------------------------------------
-      Filter Controls
-      -----------------------------------------------------
-      - Active filter: All / Mine
-      - Status filter: Active / Inactive / All
-      - Search bar: filters by name or title
-      - Create Resource button: opens modal
-  ----------------------------------------------------- */}
-  <div className="mb-4 flex flex-wrap gap-4 items-center justify-between">
-
-    {/* Left-side filters */}
-    <div className="flex flex-wrap gap-4 items-center">
-
-      {/* Active Filter (All / Mine) */}
-      <div>
-        <button
-          onClick={() => setActiveFilter('all')}
-          className={`p-2 w-16 border border-gray-300 text-center cursor-pointer text-sm ${
-            activeFilter === 'all' ? 'bg-[#017ACB] text-white' : 'text-gray-600 bg-white'
-          }`}
-          style={styles.outfitFont}
-        >
-          All
-        </button>
-
-        <button
-          onClick={() => setActiveFilter('mine')}
-          className={`p-2 w-16 border border-gray-300 text-center cursor-pointer text-sm ${
-            activeFilter === 'mine' ? 'bg-[#017ACB] text-white' : 'text-gray-600 bg-white'
-          }`}
-          style={styles.outfitFont}
-        >
-          Mine
-        </button>
-      </div>
-
-      {/* Status Filter */}
-      <select
-        value={statusFilter}
-        onChange={(e) => setStatusFilter(e.target.value)}
-        className="px-3 py-2 border border-gray-300 rounded text-gray-700 text-sm"
-        style={styles.outfitFont}
-      >
-        <option value="all">All Status</option>
-        <option value="active">Active</option>
-        <option value="inactive">Inactive</option>
-      </select>
-
-      {/* Search Bar */}
-      <input
-        type="text"
-        placeholder="Search..."
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        className="px-3 py-2 border border-gray-300 rounded text-gray-700 text-sm w-48"
-        style={styles.outfitFont}
-      />
-    </div>
-
-    {/* Create Resource Button */}
-    <button
-      onClick={() => setShowCreateModal(true)}
-      className="px-4 py-2 bg-[#017ACB] text-white rounded hover:bg-blue-700 transition text-sm cursor-pointer"
-      style={styles.outfitFont}
-    >
-      + Create Resource
-    </button>
-  </div>
-
-  {/* -----------------------------------------------------
-      Employee Table
-      -----------------------------------------------------
-      - Displays all employees with capacity by month
-      - Sticky first column for Edit button
-      - Dynamically renders month columns from MONTHS array
-  ----------------------------------------------------- */}
-  <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-x-auto">
-    <table className="w-full text-sm">
-
-      {/* ---------------- Table Header ---------------- */}
-      <thead className="bg-gray-100">
-        <tr>
-          <th className="px-2 py-2 text-left font-semibold text-gray-700 border-b border-r sticky left-0 bg-gray-100 z-10" style={styles.outfitFont}>Edit</th>
-          <th className="px-2 py-2 text-left font-semibold text-gray-700 border-b border-r min-w-[150px]" style={styles.outfitFont}>Name</th>
-          <th className="px-2 py-2 text-left font-semibold text-gray-700 border-b border-r min-w-[180px]" style={styles.outfitFont}>Title</th>
-          <th className="px-2 py-2 text-left font-semibold text-gray-700 border-b border-r min-w-[100px]" style={styles.outfitFont}>Department</th>
-          <th className="px-2 py-2 text-left font-semibold text-gray-700 border-b border-r min-w-[130px]" style={styles.outfitFont}>Reports To</th>
-          <th className="px-2 py-2 text-left font-semibold text-gray-700 border-b border-r min-w-[130px]" style={styles.outfitFont}>Director Level</th>
-          <th className="px-2 py-2 text-left font-semibold text-gray-700 border-b border-r min-w-[150px]" style={styles.outfitFont}>Other Information</th>
-          <th className="px-2 py-2 text-left font-semibold text-gray-700 border-b border-r min-w-[80px]" style={styles.outfitFont}>Current Status</th>
-
-          {/* Dynamic Month Columns */}
-          {MONTHS.map(month => (
-            <th
-              key={month.key}
-              className="px-2 py-2 text-center font-semibold text-gray-700 border-b border-r min-w-[60px]"
-              style={styles.outfitFont}
-            >
-              {month.label}
-            </th>
-          ))}
-        </tr>
-      </thead>
-
-      {/* ---------------- Table Body ---------------- */}
-      <tbody>
-        {employees.length === 0 ? (
-          <tr>
-            <td
-              colSpan={8 + MONTHS.length}
-              className="px-4 py-8 text-center text-gray-500"
-              style={styles.outfitFont}
-            >
-              No employees found
-            </td>
-          </tr>
-        ) : (
-          employees.map((employee) => (
-            <tr key={employee.emp_id} className="hover:bg-gray-50 border-b">
-
-              {/* Edit Button (Sticky Column) */}
-              <td className="px-2 py-2 border-r sticky left-0 bg-white z-10">
-                <button
-                  onClick={() => openEditModal(employee)}
-                  className="px-2 py-1 bg-[#017ACB] text-white text-xs rounded hover:bg-blue-700 cursor-pointer"
-                  style={styles.outfitFont}
-                >
-                  Edit
-                </button>
-              </td>
-
-              {/* Employee Details */}
-              <td className="px-2 py-2 text-gray-900 border-r" style={styles.outfitFont}>{employee.emp_name}</td>
-              <td className="px-2 py-2 text-gray-600 border-r" style={styles.outfitFont}>{employee.emp_title}</td>
-              <td className="px-2 py-2 text-gray-600 border-r" style={styles.outfitFont}>{getDepartmentName(employee.dept_no)}</td>
-              <td className="px-2 py-2 text-gray-600 border-r" style={styles.outfitFont}>{getManagerName(employee.manager_id)}</td>
-              <td className="px-2 py-2 text-gray-600 border-r" style={styles.outfitFont}>{getDirectorName()}</td>
-              <td className="px-2 py-2 text-gray-600 border-r" style={styles.outfitFont}>{employee.other_info || ''}</td>
-
-              {/* Current Status Badge */}
-              <td className="px-2 py-2 border-r">
-                <span
-                  className={`px-2 py-1 text-xs rounded ${
-                    getCurrentStatus(employee) === 'Active'
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-red-100 text-red-800'
-                  }`}
-                  style={styles.outfitFont}
-                >
-                  {getCurrentStatus(employee)}
-                </span>
-              </td>
-
-              {/* Monthly Capacity Values */}
-              {MONTHS.map(month => (
-                <td
-                  key={month.key}
-                  className="px-2 py-2 text-center border-r text-gray-700"
-                  style={styles.outfitFont}
-                >
-                  {getMonthValue(employee, month.key)}
-                </td>
-              ))}
-            </tr>
-          ))
+        {error && (
+          <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+            {error}
+            <button onClick={() => setError("")} className="ml-4 text-red-900 font-bold">
+              ×
+            </button>
+          </div>
         )}
-      </tbody>
-    </table>
-  </div>
 
-  {/* -----------------------------------------------------
-      Footer: Summary of Results
-      -----------------------------------------------------
-      - Shows how many employees match the current filters
-  ----------------------------------------------------- */}
-  <div className="mt-4 text-gray-600 text-sm" style={styles.outfitFont}>
-    Showing {employees.length} of {employeesWithCapacity.length} employees
-  </div>
+        <div className="mb-4 flex flex-wrap gap-4 items-center justify-between">
+          <div className="flex flex-wrap gap-4 items-center">
+            <div>
+              <button
+                onClick={() => setActiveFilter("all")}
+                className={`p-2 w-16 border border-gray-300 text-center cursor-pointer text-sm ${
+                  activeFilter === "all" ? "bg-[#017ACB] text-white" : "text-gray-600 bg-white"
+                }`}
+                style={styles.outfitFont}
+              >
+                All
+              </button>
 
-</main>
+              <button
+                onClick={() => setActiveFilter("mine")}
+                className={`p-2 w-16 border border-gray-300 text-center cursor-pointer text-sm ${
+                  activeFilter === "mine" ? "bg-[#017ACB] text-white" : "text-gray-600 bg-white"
+                }`}
+                style={styles.outfitFont}
+              >
+                Mine
+              </button>
+            </div>
 
-{/* ---------------------------------------------------------
-    CREATE RESOURCE MODAL
-    ---------------------------------------------------------
-    - Appears when showCreateModal === true
-    - Allows creation of a new employee record
-    - Includes validation for required fields
-    - Uses formData state to track input values
---------------------------------------------------------- */}
-{showCreateModal && (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-
-      {/* Modal Title */}
-      <h2 className="text-xl font-bold text-gray-900 mb-4" style={styles.outfitFont}>
-        Create New Resource
-      </h2>
-
-      {/* Create Form */}
-      <form onSubmit={handleCreate} className="space-y-4">
-
-        {/* Name Field */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1" style={styles.outfitFont}>
-            Name *
-          </label>
-          <input
-            type="text"
-            value={formData.emp_name}
-            onChange={(e) => setFormData({ ...formData, emp_name: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded text-gray-700 text-sm"
-            style={styles.outfitFont}
-            required
-          />
-        </div>
-
-        {/* Title Field */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1" style={styles.outfitFont}>
-            Title *
-          </label>
-          <input
-            type="text"
-            value={formData.emp_title}
-            onChange={(e) => setFormData({ ...formData, emp_title: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded text-gray-700 text-sm"
-            style={styles.outfitFont}
-            required
-          />
-        </div>
- -------------
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1" style={styles.outfitFont}>Department *</label>
-                <select
-                  value={formData.dept_no}
-                  onChange={(e) => setFormData({ ...formData, dept_no: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-gray-700 text-sm"
-                  style={styles.outfitFont}
-                  required
-                >
-                  <option value="">Select Department</option>
-                  {departments.map((dept) => (
-                    <option key={dept.dept_no} value={dept.dept_no}>
-                      {dept.dept_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
- 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1" style={styles.outfitFont}>Reports To</label>
-                <select
-                  value={formData.manager_id}
-                  onChange={(e) => setFormData({ ...formData, manager_id: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-gray-700 text-sm"
-                  style={styles.outfitFont}
-                >
-                  <option value="">Select Manager</option>
-                  {managers.map((manager) => (
-                    <option key={manager.emp_id} value={manager.emp_id}>
-                      {manager.emp_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
- 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1" style={styles.outfitFont}>Other Information</label>
-                <input
-                  type="text"
-                  value={formData.other_info}
-                  onChange={(e) => setFormData({ ...formData, other_info: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-gray-700 text-sm"
-                  style={styles.outfitFont}
-                  placeholder="e.g., Contract End date = Oct 15, 2025"
-                />
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowCreateModal(false);
-                    setFormData({ emp_name: '', emp_title: '', dept_no: '', manager_id: '', other_info: '' });
-                  }}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-100 text-sm cursor-pointer"
-                  style={styles.outfitFont}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2 bg-[#017ACB] text-white rounded hover:bg-blue-700 text-sm cursor-pointer"
-                  style={styles.outfitFont}
-                >
-                  Create
-                </button>
-              </div>
-            </form>
+            <input
+              type="text"
+              placeholder="Search..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded text-gray-700 text-sm w-48"
+              style={styles.outfitFont}
+            />
           </div>
+
+          <Link
+            href="/Resource-Manager/create_edit_Resources/CreateResource"
+            className="px-4 py-2 bg-[#017ACB] text-white rounded hover:bg-blue-700 transition text-sm cursor-pointer"
+            style={styles.outfitFont}
+          >
+            + Create Resource
+          </Link>
         </div>
-      )}
- 
-      {showEditModal && selectedEmployee && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold text-gray-900 mb-4" style={styles.outfitFont}>Edit Resource</h2>
- 
-            <form onSubmit={handleEdit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1" style={styles.outfitFont}>Name *</label>
-                <input
-                  type="text"
-                  value={formData.emp_name}
-                  onChange={(e) => setFormData({ ...formData, emp_name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-gray-700 text-sm"
-                  style={styles.outfitFont}
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1" style={styles.outfitFont}>Title *</label>
-                <input
-                  type="text"
-                  value={formData.emp_title}
-                  onChange={(e) => setFormData({ ...formData, emp_title: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-gray-700 text-sm"
-                  style={styles.outfitFont}
-                  required
-                />
-              </div>
- 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1" style={styles.outfitFont}>Department *</label>
-                <select
-                  value={formData.dept_no}
-                  onChange={(e) => setFormData({ ...formData, dept_no: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-gray-700 text-sm"
-                  style={styles.outfitFont}
-                  required
-                >
-                  <option value="">Select Department</option>
-                  {departments.map((dept) => (
-                    <option key={dept.dept_no} value={dept.dept_no}>
-                      {dept.dept_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
- 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1" style={styles.outfitFont}>Reports To</label>
-                <select
-                  value={formData.manager_id}
-                  onChange={(e) => setFormData({ ...formData, manager_id: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-gray-700 text-sm"
-                  style={styles.outfitFont}
-                >
-                  <option value="">Select Manager</option>
-                  {managers.map((manager) => (
-                    <option key={manager.emp_id} value={manager.emp_id}>
-                      {manager.emp_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
- 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1" style={styles.outfitFont}>Other Information</label>
-                <input
-                  type="text"
-                  value={formData.other_info}
-                  onChange={(e) => setFormData({ ...formData, other_info: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-gray-700 text-sm"
-                  style={styles.outfitFont}
-                />
-              </div>
- 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1" style={styles.outfitFont}>Status</label>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleStatusChange(selectedEmployee.emp_id, 'Active')}
-                    className="px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm cursor-pointer"
+
+        {/* Table Container */}
+        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+          <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-280px)]">
+            <table className="w-full text-sm">
+              <thead className="bg-[#017ACB] text-white sticky top-0 z-10">
+                <tr>
+                  <th
+                    className="px-2 py-2 w-16 text-center font-semibold border-b border-black border-r border-white sticky left-0 top-0 z-50 bg-[#017ACB]"
                     style={styles.outfitFont}
                   >
-                    Set Active
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleStatusChange(selectedEmployee.emp_id, 'Inactive')}
-                    className="px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm cursor-pointer"
+                    Edit
+                  </th>
+
+                  {/* Name Filter Column */}
+                  <th
+                    className="px-2 py-2 text-left font-semibold border-b border-black border-r border-white sticky left-13 top-0 z-40 bg-[#017ACB] min-w-[150px] relative"
                     style={styles.outfitFont}
                   >
-                    Set Inactive
-                  </button>
-                </div>
-              </div>
- 
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowEditModal(false);
-                    setSelectedEmployee(null);
-                    setFormData({ emp_name: '', emp_title: '', dept_no: '', manager_id: '', other_info: '' });
-                  }}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-100 text-sm cursor-pointer"
-                  style={styles.outfitFont}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2 bg-[#017ACB] text-white rounded hover:bg-blue-700 text-sm cursor-pointer"
-                  style={styles.outfitFont}
-                >
-                  Save Changes
-                </button>
-              </div>
-            </form>
+                    <div className="flex justify-between items-center">
+                      <span>Name</span>
+
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setMenuPosition({ x: rect.left, y: rect.bottom });
+                          setShowNameMenu((prev) => !prev);
+
+                          // close others
+                          setShowTitleMenu(false);
+                          setShowReportsToMenu(false);
+                          setShowCurrentStatusMenu(false);
+                        }}
+                        className="ml-2 bg-white text-[#017ACB] px-2 py-1 rounded text-xs font-bold hover:bg-gray-100 transition"
+                      >
+                        ▼
+                      </button>
+                    </div>
+
+                    {/* Name filter menu */}
+                    {showNameMenu &&
+                      renderDropdownPortal(
+                        <div className="bg-white text-black shadow-lg rounded w-56 max-h-64 overflow-y-auto border border-gray-200">
+                          <div
+                            className={`px-3 py-2 cursor-pointer text-sm hover:bg-gray-200 flex items-center gap-2 ${
+                              selectedNames.length === 0 || selectedNames.length === availableNames.length
+                                ? "bg-gray-100 font-semibold"
+                                : ""
+                            }`}
+                            onClick={() => setSelectedNames([])}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedNames.length === 0 || selectedNames.length === availableNames.length}
+                              readOnly
+                            />
+                            All
+                          </div>
+
+                          
+        <div
+          className={`px-3 py-2 cursor-pointer text-sm hover:bg-gray-200 ${
+            nameSort === 'az' ? 'bg-gray-100 font-semibold' : ''
+          }`}
+          onClick={() => {
+            setNameSort('az');
+            setShowNameMenu(false);
+          }}
+        >
+          A → Z
+        </div>
+
+        <div
+          className={`px-3 py-2 cursor-pointer text-sm hover:bg-gray-200 ${
+            nameSort === 'za' ? 'bg-gray-100 font-semibold' : ''
+          }`}
+          onClick={() => {
+            setNameSort('za');
+            setShowNameMenu(false);
+          }}
+        >
+          Z → A
+        </div>
+
+                          {availableNames.map((name) => (
+                            <div
+                              key={name}
+                              className={`px-3 py-2 cursor-pointer text-sm hover:bg-gray-200 flex items-center gap-2 ${
+                                selectedNames.includes(name) ? "bg-gray-100 font-semibold" : ""
+                              }`}
+                              onClick={() => toggleSelection(name, setSelectedNames, selectedNames)}
+                            >
+                              <input type="checkbox" checked={selectedNames.includes(name)} readOnly />
+                              {name}
+                            </div>
+                          ))}
+                        </div>,
+                      )}
+                  </th>
+
+                  {/* Title Filter Column */}
+                  <th
+                    className="px-2 py-2 text-left font-semibold border-b border-black border-r border-white min-w-[150px] relative"
+                    style={styles.outfitFont}
+                  >
+                    <div className="flex justify-between items-center">
+                      <span>Title</span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setMenuPosition({ x: rect.left, y: rect.bottom });
+                          setShowTitleMenu((prev) => !prev);
+                          setShowReportsToMenu(false);
+                          setShowCurrentStatusMenu(false);
+                        }}
+                        className="ml-2 bg-white text-[#017ACB] px-2 py-1 rounded text-xs font-bold hover:bg-gray-100 transition"
+                      >
+                        ▼
+                      </button>
+                    </div>
+
+                    {/* ✅ PORTAL MENU */}
+                    {showTitleMenu &&
+                      renderDropdownPortal(
+                        <div className="bg-white text-black shadow-lg rounded w-56 max-h-64 overflow-y-auto border border-gray-200">
+                          <div
+                            className={`px-3 py-2 cursor-pointer text-sm hover:bg-gray-200 flex items-center gap-2 ${
+                              selectedTitles.length === 0 || selectedTitles.length === availableTitles.length
+                                ? "bg-gray-100 font-semibold"
+                                : ""
+                            }`}
+                            onClick={() => setSelectedTitles([])}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedTitles.length === 0 || selectedTitles.length === availableTitles.length}
+                              readOnly
+                            />
+                            All
+                          </div>
+
+                          {availableTitles.map((title) => (
+                            <div
+                              key={title}
+                              className={`px-3 py-2 cursor-pointer text-sm hover:bg-gray-200 flex items-center gap-2 ${
+                                selectedTitles.includes(title) ? "bg-gray-100 font-semibold" : ""
+                              }`}
+                              onClick={() => toggleSelection(title, setSelectedTitles, selectedTitles)}
+                            >
+                              <input type="checkbox" checked={selectedTitles.includes(title)} readOnly />
+                              {title}
+                            </div>
+                          ))}
+                        </div>,
+                      )}
+                  </th>
+
+                  <th
+                    className="px-2 py-2 text-left font-semibold border-b border-black border-r border-white min-w-[100px]"
+                    style={styles.outfitFont}
+                  >
+                    Department
+                  </th>
+
+                  {/* Reports To Filter Column */}
+                  <th
+                    className="px-2 py-2 text-left font-semibold border-b border-black border-r border-white min-w-[130px] relative"
+                    style={styles.outfitFont}
+                  >
+                    <div className="flex justify-between items-center">
+                      <span>Reports To</span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setMenuPosition({ x: rect.left, y: rect.bottom });
+                          setShowReportsToMenu((prev) => !prev);
+                          setShowTitleMenu(false);
+                          setShowCurrentStatusMenu(false);
+                        }}
+                        className="ml-2 bg-white text-[#017ACB] px-2 py-1 rounded text-xs font-bold hover:bg-gray-100 transition"
+                      >
+                        ▼
+                      </button>
+                    </div>
+
+                    {/* ✅ PORTAL MENU */}
+                    {showReportsToMenu &&
+                      renderDropdownPortal(
+                        <div className="bg-white text-black shadow-lg rounded w-56 max-h-64 overflow-y-auto border border-gray-200">
+                          <div
+                            className={`px-3 py-2 cursor-pointer text-sm hover:bg-gray-200 flex items-center gap-2 ${
+                              selectedReportsTo.length === 0 || selectedReportsTo.length === availableReportsTo.length
+                                ? "bg-gray-100 font-semibold"
+                                : ""
+                            }`}
+                            onClick={() => setSelectedReportsTo([])}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={
+                                selectedReportsTo.length === 0 || selectedReportsTo.length === availableReportsTo.length
+                              }
+                              readOnly
+                            />
+                            All
+                          </div>
+
+                          {availableReportsTo.map((manager) => (
+                            <div
+                              key={manager}
+                              className={`px-3 py-2 cursor-pointer text-sm hover:bg-gray-200 flex items-center gap-2 ${
+                                selectedReportsTo.includes(manager) ? "bg-gray-100 font-semibold" : ""
+                              }`}
+                              onClick={() => toggleSelection(manager, setSelectedReportsTo, selectedReportsTo)}
+                            >
+                              <input type="checkbox" checked={selectedReportsTo.includes(manager)} readOnly />
+                              {manager}
+                            </div>
+                          ))}
+                        </div>,
+                      )}
+                  </th>
+                  <th
+                    className="px-2 py-2 text-left font-semibold border-b border-black border-r border-white min-w-[130px]"
+                    style={styles.outfitFont}
+                  >
+                    Manager Level
+                  </th>
+                  <th
+                    className="px-2 py-2 text-left font-semibold border-b border-black border-r border-white min-w-[130px]"
+                    style={styles.outfitFont}
+                  >
+                    Director Level
+                  </th>
+                  <th
+                    className="px-2 py-2 text-left font-semibold border-b border-black border-r border-white min-w-[150px]"
+                    style={styles.outfitFont}
+                  >
+                    Other Information
+                  </th>
+
+                  {/* Current Status Filter Column */}
+                  <th
+                    className="px-2 py-2 text-left font-semibold border-b border-black border-r border-white min-w-[120px] relative"
+                    style={styles.outfitFont}
+                  >
+                    <div className="flex justify-between items-center">
+                      <span>Current Status</span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setMenuPosition({ x: rect.left, y: rect.bottom });
+                          setShowCurrentStatusMenu((prev) => !prev);
+                          setShowTitleMenu(false);
+                          setShowReportsToMenu(false);
+                        }}
+                        className="ml-2 bg-white text-[#017ACB] px-2 py-1 rounded text-xs font-bold hover:bg-gray-100 transition"
+                      >
+                        ▼
+                      </button>
+                    </div>
+
+                    {/* ✅ PORTAL MENU */}
+                    {showCurrentStatusMenu &&
+                      renderDropdownPortal(
+                        <div className="bg-white text-black shadow-lg rounded w-56 max-h-64 overflow-y-auto border border-gray-200">
+                          <div
+                            className={`px-3 py-2 cursor-pointer text-sm hover:bg-gray-200 flex items-center gap-2 ${
+                              selectedCurrentStatuses.length === 0 ||
+                              selectedCurrentStatuses.length === availableCurrentStatuses.length
+                                ? "bg-gray-100 font-semibold"
+                                : ""
+                            }`}
+                            onClick={() => setSelectedCurrentStatuses([])}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={
+                                selectedCurrentStatuses.length === 0 ||
+                                selectedCurrentStatuses.length === availableCurrentStatuses.length
+                              }
+                              readOnly
+                            />
+                            All
+                          </div>
+
+                          {availableCurrentStatuses.map((status) => (
+                            <div
+                              key={status}
+                              className={`px-3 py-2 cursor-pointer text-sm hover:bg-gray-200 flex items-center gap-2 ${
+                                selectedCurrentStatuses.includes(status) ? "bg-gray-100 font-semibold" : ""
+                              }`}
+                              onClick={() =>
+                                toggleSelection(status, setSelectedCurrentStatuses, selectedCurrentStatuses)
+                              }
+                            >
+                              <input type="checkbox" checked={selectedCurrentStatuses.includes(status)} readOnly />
+                              {status}
+                            </div>
+                          ))}
+                        </div>,
+                      )}
+                  </th>
+
+                  {MONTHS.map((month) => (
+                    <th
+                      key={month.key}
+                      className="px-2 py-2 text-center font-semibold text-white border-b border-black border-r border-white min-w-[60px]"
+                      style={styles.outfitFont}
+                    >
+                      {month.label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+
+              <tbody>
+                {employees.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={9 + MONTHS.length}
+                      className="px-4 py-8 text-center text-black"
+                      style={styles.outfitFont}
+                    >
+                      No employees found
+                    </td>
+                  </tr>
+                ) : (
+                  employees.map((employee) => (
+                    <tr key={employee.emp_id} className="hover:bg-gray-50 border-b border-black">
+                      <td className="px-2 py-2 w-16 border-r border-black sticky left-0 z-5 bg-white">
+                        <Link
+                          href={`/Resource-Manager/create_edit_Resources/EditResource?id=${employee.emp_id}`}
+                          className="px-2 py-1 bg-[#017ACB] text-white text-xs rounded hover:bg-blue-700 cursor-pointer inline-block"
+                          style={styles.outfitFont}
+                        >
+                          Edit
+                        </Link>
+                      </td>
+
+                      <td className="px-2 py-2 text-black border-r border-black sticky left-13 z-5 bg-white" style={styles.outfitFont}>
+                        {employee.emp_name}
+                      </td>
+                      <td className="px-2 py-2 text-black border-r border-black" style={styles.outfitFont}>
+                        {employee.emp_title}
+                      </td>
+                      <td className="px-2 py-2 text-black border-r border-black" style={styles.outfitFont}>
+                        {getDepartmentName(employee.dept_no)}
+                      </td>
+                      <td className="px-2 py-2 text-black border-r border-black" style={styles.outfitFont}>
+                        {getReportsToName(employee)}
+                      </td>
+                      <td className="px-2 py-2 text-black border-r border-black" style={styles.outfitFont}>
+                        {getLevelName(employee.manager_level)}
+                      </td>
+                      <td className="px-2 py-2 text-black border-r border-black" style={styles.outfitFont}>
+                        {getLevelName(employee.director_level)}
+                      </td>
+                      <td className="px-2 py-2 text-black border-r border-black" style={styles.outfitFont}>
+                        {employee.other_info || ""}
+                      </td>
+
+                      <td className="px-2 py-2 border-r border-black">
+                        <span
+                          className={`px-2 py-1 text-xs rounded ${
+                            getCurrentStatus(employee) === "Active"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-800"
+                          }`}
+                          style={styles.outfitFont}
+                        >
+                          {getCurrentStatus(employee)}
+                        </span>
+                      </td>
+
+                      {MONTHS.map((month) => (
+                        <td
+                          key={month.key}
+                          className="px-2 py-2 text-center border-r border-black text-black"
+                          style={styles.outfitFont}
+                        >
+                          {editingCell?.empId === employee.emp_id &&
+                          editingCell?.monthKey === month.key ? (
+                            <input
+                              type="number"
+                              min="0"
+                              max="1"
+                              step="0.25"
+                              value={editingValue}
+                              onChange={(e) => setEditingValue(e.target.value)}
+                              onBlur={() => saveMonthValue(employee, month.key)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  saveMonthValue(employee, month.key);
+                                }
+
+                                if (e.key === 'Escape') {
+                                  e.preventDefault();
+                                  cancelEditMonth();
+                                }
+                              }}
+                              autoFocus
+                              className="w-16 px-1 py-0.5 border border-gray-300 rounded text-center text-sm"
+                            />
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => startEditMonth(employee, month.key)}
+                              className="w-full text-center hover:bg-gray-100 rounded px-1 py-0.5"
+                            >
+                              {getMonthValue(employee, month.key)}
+                            </button>
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
-      )}
+
+        <div className="mt-4 text-gray-600 text-sm" style={styles.outfitFont}>
+          Showing {employees.length} of {employeesWithCapacity.length} employees
+        </div>
+      </main>
     </div>
   );
 }

@@ -98,11 +98,11 @@ async function getEmployeeById(db, empId) {
 /**
  * Create a new employee
  * @param {Object} db - MongoDB database instance
- * @param {Object} employeeData - { emp_name, emp_title, dept_no, manager_id }
+ * @param {Object} employeeData - { emp_name, emp_title, dept_no, manager_id, manager_level, director_level, other_info }
  * @returns {Object} { success: boolean, employee?: Object, error?: string }
  */
 async function createEmployee(db, employeeData) {
-  const { emp_name, emp_title, dept_no, manager_id } = employeeData;
+  const { emp_name, emp_title, dept_no, manager_id, manager_level, director_level, other_info } = employeeData;
  
   // Validation: Check required fields
   if (!emp_name || !emp_title || !dept_no) {
@@ -130,7 +130,10 @@ async function createEmployee(db, employeeData) {
     emp_name: emp_name,
     emp_title: emp_title,
     dept_no: dept_no,
-    manager_id: manager_id ? parseInt(manager_id) : null
+    manager_id: manager_id ? parseInt(manager_id) : null,
+    manager_level: manager_level || '',
+    director_level: director_level || '',
+    other_info: other_info || ''
   };
  
   // Insert employee
@@ -169,11 +172,11 @@ async function createEmployee(db, employeeData) {
  * Update an existing employee
  * @param {Object} db - MongoDB database instance
  * @param {Number} empId - Employee ID to update
- * @param {Object} employeeData - { emp_name, emp_title, dept_no, manager_id }
+ * @param {Object} employeeData - { emp_name, emp_title, dept_no, manager_id, manager_level, director_level, other_info }
  * @returns {Object} { success: boolean, employee?: Object, error?: string }
  */
 async function updateEmployee(db, empId, employeeData) {
-  const { emp_name, emp_title, dept_no, manager_id } = employeeData;
+  const { emp_name, emp_title, dept_no, manager_id, manager_level, director_level, other_info } = employeeData;
  
   // Validation: Check required fields
   if (!emp_name || !emp_title || !dept_no) {
@@ -198,7 +201,10 @@ async function updateEmployee(db, empId, employeeData) {
     emp_name: emp_name,
     emp_title: emp_title,
     dept_no: dept_no,
-    manager_id: manager_id ? parseInt(manager_id) : null
+    manager_id: manager_id ? parseInt(manager_id) : null,
+    manager_level: manager_level || '',
+    director_level: director_level || '',
+    other_info: other_info || ''
   };
  
   await employeeCollection.updateOne(
@@ -362,13 +368,32 @@ async function getAllDepartments(db) {
  */
 async function getAllManagers(db) {
   const employeeCollection = db.collection('employee');
- 
-  const managers = await employeeCollection.find({
-    $or: [
-      { emp_title: { $regex: /manager|supervisor|lead|director/i } }
-    ]
-  }).toArray();
- 
+
+  const managers = await employeeCollection.aggregate([
+    {
+      $match: {
+        $or: [{ emp_title: { $regex: /manager|supervisor|lead|director/i } }]
+      }
+    },
+    {
+      $lookup: {
+        from: 'account',
+        localField: 'emp_id',
+        foreignField: 'emp_id',
+        as: 'accountInfo'
+      }
+    },
+    {
+      $addFields: {
+        account_id: { $arrayElemAt: ['$accountInfo.account.account_id', 0] },
+        acc_type_id: { $arrayElemAt: ['$accountInfo.account.acc_type_id', 0] }
+      }
+    },
+    {
+      $project: { accountInfo: 0 }
+    }
+  ]).toArray();
+
   return managers;
 }
  
