@@ -86,11 +86,36 @@ export default function CalendarViewPage() {
         const formatted = data.formatted || [];
         setAvailableMonths(formatted);
 
-        // Auto-select latest month
-        if (formatted.length > 0) {
-          const latest = formatted[formatted.length - 1].yyyymm;
-          setSelectedMonths([latest]);
+      
+      /* -------------------------------------------------------
+        DEFAULT MONTH SELECTION 
+        -------------------------------------------------------
+        PURPOSE:
+        - Always select the current month (YYYYMM) when available
+        - If current month is missing from DB, select the closest
+        - Works with expanded 24‑month window (12 back + 12 forward)
+      ------------------------------------------------------- */
+      if (formatted.length > 0) {
+        const today = new Date();
+        const currentYYYYMM =
+          today.getFullYear() * 100 + (today.getMonth() + 1);
+
+        // Try to match exact current month
+        const match = formatted.find((m) => m.yyyymm === currentYYYYMM);
+
+        if (match) {
+          setSelectedMonths([match.yyyymm]);
+        } else {
+          // Fallback: pick the closest month numerically
+          const closest = formatted.reduce((prev, curr) =>
+            Math.abs(curr.yyyymm - currentYYYYMM) <
+            Math.abs(prev.yyyymm - currentYYYYMM)
+              ? curr
+              : prev
+          );
+          setSelectedMonths([closest.yyyymm]);
         }
+      }
       } catch (err) {
         console.error('Error loading months:', err);
       } finally {

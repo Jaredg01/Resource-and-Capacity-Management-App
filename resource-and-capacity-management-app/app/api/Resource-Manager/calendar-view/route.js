@@ -42,11 +42,11 @@ function formatMonthLabel(yyyymm) {
 }
 
 /* ---------------------------------------------------------
-   GET → AVAILABLE MONTHS (Last 12 Months)
+   GET → AVAILABLE MONTHS (12 months back + 12 months forward)
    ---------------------------------------------------------
    PURPOSE:
    - Retrieves distinct YYYYMM values from allocation collection
-   - Filters to last 12 months up to current month
+   - Filters to a 24‑month window centered on current month
    - Returns both raw numeric months + formatted labels
 --------------------------------------------------------- */
 export async function GET() {
@@ -69,20 +69,26 @@ export async function GET() {
     // Normalize to plain JS numbers
     const numericMonths = rawMonths
       .map((m) => Number(m))
-      .filter((m) => !Number.isNaN(m)); // Remove invalid entries
+      .filter((m) => !Number.isNaN(m));
 
     const today = new Date();
     const thisYYYYMM = today.getFullYear() * 100 + (today.getMonth() + 1);
 
-    // Compute YYYYMM for 12 months ago
+    // 12 months back
     const oneYearAgo = new Date(today);
     oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
     const oneYearAgoYYYYMM =
       oneYearAgo.getFullYear() * 100 + (oneYearAgo.getMonth() + 1);
 
-    // Keep only months within the last 12 months
+    // 12 months forward
+    const oneYearAhead = new Date(today);
+    oneYearAhead.setFullYear(oneYearAhead.getFullYear() + 1);
+    const oneYearAheadYYYYMM =
+      oneYearAhead.getFullYear() * 100 + (oneYearAhead.getMonth() + 1);
+
+    // Filter months within 24‑month window
     const filtered = numericMonths
-      .filter((m) => m >= oneYearAgoYYYYMM && m <= thisYYYYMM)
+      .filter((m) => m >= oneYearAgoYYYYMM && m <= oneYearAheadYYYYMM)
       .sort((a, b) => a - b);
 
     // Attach formatted labels

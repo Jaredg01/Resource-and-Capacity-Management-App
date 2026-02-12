@@ -606,7 +606,7 @@ export default function InitiativesPage() {
                   style={styles.outfitFont}
                 >
                   <div className="flex justify-between items-center">
-                    <span>Lead</span>
+                    <span>Leader Accountable</span>
 
                     {/* Lead filter dropdown trigger */}
                     <button
