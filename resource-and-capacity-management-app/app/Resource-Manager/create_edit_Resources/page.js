@@ -79,7 +79,7 @@ export default function ResourcesPage() {
   const [availableReportsTo, setAvailableReportsTo] = useState([]);
   const [availableCurrentStatuses, setAvailableCurrentStatuses] = useState([]);
 
-  // ✅ Portal ready state (prevents SSR crash)
+  // Portal ready state (prevents SSR crash)
   const [portalReady, setPortalReady] = useState(false);
 
   // Inline month editing
@@ -473,7 +473,7 @@ export default function ResourcesPage() {
   };
 
   /* ---------------------------------------------------------
-     ✅ Dropdown Portal Renderer
+     Dropdown Portal Renderer
      - This fixes clipping + invisible-but-clickable menus
   --------------------------------------------------------- */
   const renderDropdownPortal = (menu) => {
@@ -759,7 +759,7 @@ export default function ResourcesPage() {
                       </button>
                     </div>
 
-                    {/* ✅ PORTAL MENU */}
+                    {/* PORTAL MENU */}
                     {showTitleMenu &&
                       renderDropdownPortal(
                         <div className="bg-white text-black shadow-lg rounded w-56 max-h-64 overflow-y-auto border border-gray-200">
@@ -824,7 +824,7 @@ export default function ResourcesPage() {
                       </button>
                     </div>
 
-                    {/* ✅ PORTAL MENU */}
+                    {/* PORTAL MENU */}
                     {showReportsToMenu &&
                       renderDropdownPortal(
                         <div className="bg-white text-black shadow-lg rounded w-56 max-h-64 overflow-y-auto border border-gray-200">
@@ -902,7 +902,7 @@ export default function ResourcesPage() {
                       </button>
                     </div>
 
-                    {/* ✅ PORTAL MENU */}
+                    {/* PORTAL MENU */}
                     {showCurrentStatusMenu &&
                       renderDropdownPortal(
                         <div className="bg-white text-black shadow-lg rounded w-56 max-h-64 overflow-y-auto border border-gray-200">

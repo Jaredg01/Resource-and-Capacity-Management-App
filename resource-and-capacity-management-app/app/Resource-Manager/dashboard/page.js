@@ -264,7 +264,7 @@ export default function DashboardPage() {
             { label: 'Initiatives', icon: '🎯', href: '/Resource-Manager/create_edit_Initiatives' },
             { label: 'Assignments', icon: '📋', href: '/Resource-Manager/assign_edit_initiative_allocation' },
             { label: 'Calendar', icon: '📅', href: '/Resource-Manager/calendar_view' },
-            { label: 'Report', icon: '📈', href: null },
+            { label: 'Report', icon: '📈', href: '/Resource-Manager/reports' },
           ].map((tile, i) => {
 
             const content = (

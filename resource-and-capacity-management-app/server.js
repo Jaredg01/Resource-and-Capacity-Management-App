@@ -8,17 +8,6 @@ const cors = require('cors');
 // Import Model Functions
 // These functions handle employee CRUD, capacity updates, and department lookups
 // -----------------------------------------------------------------------------
-const {
-  getAllEmployees,
-  getEmployeeById,
-  createEmployee,
-  updateEmployee,
-  updateEmployeeStatus,
-  getEmployeeCapacity,
-  updateEmployeeCapacity,
-  getAllDepartments,
-  getAllManagers
-} = require('./models/ResourceManager/Create_Edit_Resources');
 
 const app = express();
 const port = process.env.PORT || 3001;
