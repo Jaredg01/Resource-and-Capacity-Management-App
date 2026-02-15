@@ -15,15 +15,19 @@ export default function LoginPage() {
     e.preventDefault();
 
     try {
-      const res = await api.post("/auth/login", {
-        username,
-        password
-      });
+const res = await api.post("/auth/login", {
+  username,
+  password
+});
 
-      const user = res.data.user;
+const user = res.data.user;
+const token = res.data.token;
 
-      // Save user
-      localStorage.setItem("user", JSON.stringify(user));
+// Save user
+localStorage.setItem("user", JSON.stringify(user));
+
+// Save token (required for protected routes)
+localStorage.setItem("token", token);
 
       // -----------------------------------------
       // ROLE‑BASED ROUTING

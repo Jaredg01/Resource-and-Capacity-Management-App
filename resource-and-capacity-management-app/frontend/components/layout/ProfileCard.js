@@ -44,10 +44,17 @@ export default function ProfileCard() {
   /* ---------------------------------------------------------
      LOGOUT
   --------------------------------------------------------- */
-  const handleLogout = () => {
-    localStorage.removeItem('user');
-    router.push('/login');
-  };
+const handleLogout = () => {
+  // Clear stored auth data
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
+
+  // Optional: clear Axios auth header
+  delete api.defaults.headers.common["Authorization"];
+
+  // Redirect to login
+  router.push("/login");
+};
 
   /* ---------------------------------------------------------
      LOADING STATE
