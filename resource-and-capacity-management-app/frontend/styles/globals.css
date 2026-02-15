@@ -1,0 +1,31 @@
+@import "tailwindcss";
+/* Imports TailwindCSS so utility classes are available throughout the project */
+
+/* Default light‑mode theme variables */
+:root {
+  --background: #ffffff;   /* Global background color */
+  --foreground: #171717;   /* Global text color */
+}
+
+/* Inline Tailwind theme extensions using CSS variables */
+@theme inline {
+  --color-background: var(--background);     /* Tailwind color mapped to CSS variable */
+  --color-foreground: var(--foreground);     /* Tailwind color mapped to CSS variable */
+  --font-sans: var(--font-geist-sans);       /* Custom sans-serif font variable */
+  --font-mono: var(--font-geist-mono);       /* Custom monospace font variable */
+}
+
+/* Dark mode overrides based on system preference */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;  /* Dark mode background */
+    --foreground: #ededed;  /* Dark mode text color */
+  }
+}
+
+/* Base body styling applied globally */
+body {
+  background: var(--background);  /* Uses theme background variable */
+  color: var(--foreground);        /* Uses theme text variable */
+  font-family: Arial, Helvetica, sans-serif; /* Fallback font stack */
+}
