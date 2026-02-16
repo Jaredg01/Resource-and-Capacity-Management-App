@@ -1,3 +1,4 @@
+// Get profile data
 import { connectDB } from "../config/db.js";
 
 export const getProfile = async (req, res) => {
@@ -10,7 +11,7 @@ export const getProfile = async (req, res) => {
       return res.status(400).json({ error: "Missing username" });
     }
 
-    // 1. Fetch account
+    // Fetch account
     const accountDoc = await db.collection("account").findOne({
       "account.username": username.trim()
     });
@@ -22,24 +23,24 @@ export const getProfile = async (req, res) => {
     const empId = accountDoc.emp_id;
     const accTypeId = accountDoc.account?.acc_type_id;
 
-    // 2. Fetch employee
+    // Fetch employee
     const employee = await db.collection("employee").findOne({
       emp_id: empId
     });
 
-    // 3. Fetch department
+    // Fetch department
     const department = employee
       ? await db.collection("department").findOne({
           dept_no: employee.dept_no
         })
       : null;
 
-    // 4. Fetch account type
+    // Fetch account type
     const accountType = await db.collection("account_type").findOne({
       acc_type_id: accTypeId
     });
 
-    // 5. Build profile response
+    // Build profile response
     const profile = {
       name: employee?.emp_name || "",
       title: employee?.emp_title || "",

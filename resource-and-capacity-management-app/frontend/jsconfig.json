@@ -1,5 +1,23 @@
+/* ---------------------------------------------------------
+   TYPESCRIPT CONFIGURATION: PATH ALIASES
+   ---------------------------------------------------------
+   • Simplifies imports across the entire Next.js project
+   • Prevents fragile relative paths ("../../../components")
+   • Reduces risk of mis‑referencing files during refactors
+   • Ensures consistent module resolution for secure builds
+--------------------------------------------------------- */
+
 {
   "compilerOptions": {
+    /* -----------------------------------------------------
+       PATH ALIAS: "@/..."
+       -----------------------------------------------------
+       • Maps "@/..." to the project root ("./")
+       • Allows clean, predictable imports:
+           import Button from "@/components/Button"
+       • Prevents accidental traversal outside the project
+         which can be a security risk in some environments
+    ----------------------------------------------------- */
     "paths": {
       "@/*": ["./*"]
     }

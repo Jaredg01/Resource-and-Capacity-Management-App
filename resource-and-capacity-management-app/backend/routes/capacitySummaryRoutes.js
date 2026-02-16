@@ -3,7 +3,7 @@ import { getCapacitySummary } from "../controllers/capacitySummaryController.js"
 
 const router = express.Router();
 
-// GET /api/capacity-summary
+// Capacity summary overview
 router.get("/", getCapacitySummary);
 
 export default router;

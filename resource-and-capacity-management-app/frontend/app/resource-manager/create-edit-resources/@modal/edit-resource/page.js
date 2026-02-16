@@ -8,6 +8,16 @@ export default function EditResourceModal() {
   const searchParams = useSearchParams();
   const empId = searchParams.get('id');
 
+  /* ---------------------------------------------------------
+     STATE MANAGEMENT
+     ---------------------------------------------------------
+     • departments → dropdown list
+     • managers → dropdown list
+     • employeesList → used for name lookups
+     • employee → full employee record
+     • statusValue → Active / Inactive
+     • formData → controlled form fields
+  --------------------------------------------------------- */
   const [departments, setDepartments] = useState([]);
   const [managers, setManagers] = useState([]);
   const [employeesList, setEmployeesList] = useState([]);
@@ -27,110 +37,149 @@ export default function EditResourceModal() {
   const MANAGER_LEVEL_OPTIONS = ['None', 'Level 1', 'Level 2', 'Level 3', 'Level 4', 'Level 5'];
   const DIRECTOR_LEVEL_OPTIONS = ['None', 'Level 1', 'Level 2', 'Level 3', 'Level 4', 'Level 5'];
 
-  /* -------------------------------------------------------
-     Load employee + dropdown data
-  ------------------------------------------------------- */
+  /* ---------------------------------------------------------
+     LOAD EMPLOYEE + DROPDOWN DATA
+     ---------------------------------------------------------
+     • Runs when empId is available
+     • Fully defensive fetch calls
+  --------------------------------------------------------- */
   useEffect(() => {
-    if (empId) {
-      fetchEmployee();
-      fetchDepartments();
-      fetchManagers();
-      fetchAllEmployees();
-    }
+    if (!empId) return;
+
+    fetchEmployee();
+    fetchDepartments();
+    fetchManagers();
+    fetchAllEmployees();
   }, [empId]);
 
-  /* -------------------------------------------------------
-     Fetch single employee
-  ------------------------------------------------------- */
+  /* ---------------------------------------------------------
+     FETCH: Single Employee
+     ---------------------------------------------------------
+     • Loads employee details
+     • Populates formData
+     • Defensive against missing fields
+  --------------------------------------------------------- */
   const fetchEmployee = async () => {
-    const res = await fetch(`http://localhost:3001/api/resources/employees/${empId}`);
-    const data = await res.json();
+    try {
+      const res = await fetch(`http://localhost:3001/api/resources/employees/${empId}`);
+      if (!res.ok) return;
 
-    setEmployee(data);
+      const data = await res.json();
+      if (!data) return;
 
-    setFormData({
-      emp_name: data.emp_name || '',
-      emp_title: data.emp_title || '',
-      dept_no: data.dept_no || '',
-      manager_id: data.manager_id || '',
-      manager_level: data.manager_level || '',
-      director_level: data.director_level || '',
-      other_info: data.other_info || ''
-    });
+      setEmployee(data);
 
-    setStatusValue(data.current_status || 'Active');
+      setFormData({
+        emp_name: data.emp_name || '',
+        emp_title: data.emp_title || '',
+        dept_no: data.dept_no || '',
+        manager_id: data.manager_id || '',
+        manager_level: data.manager_level || '',
+        director_level: data.director_level || '',
+        other_info: data.other_info || ''
+      });
+
+      setStatusValue(data.current_status || 'Active');
+    } catch (err) {
+      console.error('Error fetching employee:', err);
+    }
   };
 
-  /* -------------------------------------------------------
-     Fetch departments
-  ------------------------------------------------------- */
+  /* ---------------------------------------------------------
+     FETCH: Departments
+  --------------------------------------------------------- */
   const fetchDepartments = async () => {
-    const res = await fetch('http://localhost:3001/api/resources/departments');
-    const data = await res.json();
-    setDepartments(data);
+    try {
+      const res = await fetch('http://localhost:3001/api/resources/departments');
+      if (!res.ok) return;
+
+      const data = await res.json();
+      if (Array.isArray(data)) setDepartments(data);
+    } catch (err) {
+      console.error('Error fetching departments:', err);
+    }
   };
 
-  /* -------------------------------------------------------
-     Fetch managers
-  ------------------------------------------------------- */
+  /* ---------------------------------------------------------
+     FETCH: Managers
+  --------------------------------------------------------- */
   const fetchManagers = async () => {
-    const res = await fetch('http://localhost:3001/api/resources/managers');
-    const data = await res.json();
-    setManagers(data);
+    try {
+      const res = await fetch('http://localhost:3001/api/resources/managers');
+      if (!res.ok) return;
+
+      const data = await res.json();
+      if (Array.isArray(data)) setManagers(data);
+    } catch (err) {
+      console.error('Error fetching managers:', err);
+    }
   };
 
-  /* -------------------------------------------------------
-     Fetch all employees (for manager/director lists)
-  ------------------------------------------------------- */
+  /* ---------------------------------------------------------
+     FETCH: All Employees (for name lookups)
+  --------------------------------------------------------- */
   const fetchAllEmployees = async () => {
-    const res = await fetch('http://localhost:3001/api/resources/employees');
-    const data = await res.json();
-    setEmployeesList(data || []);
+    try {
+      const res = await fetch('http://localhost:3001/api/resources/employees');
+      if (!res.ok) return;
+
+      const data = await res.json();
+      if (Array.isArray(data)) setEmployeesList(data);
+    } catch (err) {
+      console.error('Error fetching employees list:', err);
+    }
   };
 
-  /* -------------------------------------------------------
-     Helpers
-  ------------------------------------------------------- */
-  const getUniqueManagerLevels = () => {
-    return [...new Set(employeesList.map((e) => e.manager_level).filter(Boolean))];
-  };
-
-  const getEmployeeNameById = (id) => {
-    if (!id) return '';
-    const match = employeesList.find((emp) => String(emp.emp_id) === String(id));
-    return match ? match.emp_name : String(id);
-  };
-
-  /* -------------------------------------------------------
-     Submit handler
-  ------------------------------------------------------- */
+  /* ---------------------------------------------------------
+     SUBMIT HANDLER — SAVE CHANGES
+     ---------------------------------------------------------
+     • Sends PUT request with updated formData
+     • Defensive error handling
+  --------------------------------------------------------- */
   const handleEdit = async (e) => {
     e.preventDefault();
 
-    await fetch(`http://localhost:3001/api/resources/employees/${empId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(formData)
-    });
+    try {
+      await fetch(`http://localhost:3001/api/resources/employees/${empId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
 
-    router.back();
+      router.back();
+    } catch (err) {
+      console.error('Error updating employee:', err);
+    }
   };
 
-  /* -------------------------------------------------------
-     Status change handler
-  ------------------------------------------------------- */
+  /* ---------------------------------------------------------
+     STATUS CHANGE HANDLER
+     ---------------------------------------------------------
+     • Sends PATCH request to update Active/Inactive
+     • Updates UI instantly
+  --------------------------------------------------------- */
   const handleStatusChange = async (status) => {
-    await fetch(`http://localhost:3001/api/resources/employees/${empId}/status`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status })
-    });
+    try {
+      await fetch(`http://localhost:3001/api/resources/employees/${empId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
 
-    setStatusValue(status);
+      setStatusValue(status);
+    } catch (err) {
+      console.error('Error updating status:', err);
+    }
   };
 
+  /* ---------------------------------------------------------
+     PREVENT RENDER UNTIL EMPLOYEE LOADED
+  --------------------------------------------------------- */
   if (!employee) return null;
 
+  /* ---------------------------------------------------------
+     FINAL RENDER — MODAL OVERLAY
+  --------------------------------------------------------- */
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999]">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl p-6">
@@ -142,7 +191,9 @@ export default function EditResourceModal() {
 
         <form onSubmit={handleEdit}>
 
-          {/* GRID */}
+          {/* ---------------------------------------------------
+             GRID FIELDS
+          --------------------------------------------------- */}
           <div className="grid grid-cols-2 gap-4">
 
             {/* NAME */}
@@ -247,6 +298,7 @@ export default function EditResourceModal() {
           <div className="mt-4">
             <label className="text-xs font-semibold block mb-2 text-gray-700">Status</label>
             <div className="flex gap-3">
+
               <button
                 type="button"
                 onClick={() => handleStatusChange('Active')}
@@ -270,6 +322,7 @@ export default function EditResourceModal() {
               >
                 Inactive
               </button>
+
             </div>
           </div>
 

@@ -1,5 +1,6 @@
 import { connectDB } from "../config/db.js";
 
+// Get summary data
 export const getSummary = async (req, res) => {
   try {
     const db = await connectDB();
@@ -7,9 +8,7 @@ export const getSummary = async (req, res) => {
     const filter = req.query.filter;
     const username = req.query.username;
 
-    // -----------------------------
-    // ALL = same for all actors
-    // -----------------------------
+    // Return global summary
     if (filter !== "mine") {
       const backlog = await db.collection("assignment").countDocuments({
         status: "Backlog"
@@ -26,14 +25,11 @@ export const getSummary = async (req, res) => {
       return res.json({ backlog, active, hold });
     }
 
-    // -----------------------------
-    // MINE = role-based
-    // -----------------------------
+    // Return user-specific summary
     if (!username) {
       return res.json({ backlog: 0, active: 0, hold: 0 });
     }
 
-    // Get account + employee
     const accountDoc = await db.collection("account").findOne({
       "account.username": username.trim()
     });
@@ -52,10 +48,7 @@ export const getSummary = async (req, res) => {
 
     const accType = accountDoc.account.acc_type_id;
 
-    // -----------------------------
-    // RESOURCE MANAGER (1)
-    // leader = emp_name
-    // -----------------------------
+    // Resource manager summary
     if (accType === 1) {
       const baseQuery = { leader: employee.emp_name };
 
@@ -77,10 +70,7 @@ export const getSummary = async (req, res) => {
       return res.json({ backlog, active, hold });
     }
 
-    // -----------------------------
-    // STAKEHOLDER (2)
-    // requestor / requestor_vp = emp_name
-    // -----------------------------
+    // Stakeholder summary
     if (accType === 2) {
       const baseQuery = {
         $or: [
@@ -107,16 +97,12 @@ export const getSummary = async (req, res) => {
       return res.json({ backlog, active, hold });
     }
 
-    // -----------------------------
-    // TEAM MEMBER (3)
-    // allocation → activity → assignment.project_name → status
-    // only current month
-    // -----------------------------
+    // Team member summary
     if (accType === 3) {
       const now = new Date();
       const year = now.getFullYear();
-      const month = now.getMonth() + 1; // 1–12
-      const ym = year * 100 + month;    // e.g. 202507
+      const month = now.getMonth() + 1;
+      const ym = year * 100 + month;
 
       const allocations = await db.collection("allocation")
         .find({
@@ -153,7 +139,7 @@ export const getSummary = async (req, res) => {
       return res.json({ backlog, active, hold });
     }
 
-    // Fallback for unknown acc_type_id
+    // Unknown account type
     return res.json({ backlog: 0, active: 0, hold: 0 });
 
   } catch (err) {

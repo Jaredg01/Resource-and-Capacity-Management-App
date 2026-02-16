@@ -6,10 +6,10 @@ import {
 
 const router = express.Router();
 
-// GET /api/calendar-view
+// List available months
 router.get("/", getAvailableMonths);
 
-// POST /api/calendar-view
+// Fetch activities for a selected month
 router.post("/", getActivitiesByMonth);
 
 export default router;

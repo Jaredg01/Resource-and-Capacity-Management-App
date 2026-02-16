@@ -3,15 +3,33 @@
 import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+/* ---------------------------------------------------------
+   EDIT ALLOCATION MODAL
+   ---------------------------------------------------------
+   PURPOSE:
+   • Displays allocation details for a selected employee
+   • Loads employee, assignment, and allocation metadata
+   • Provides a clean, read‑only modal with a Close button
+   • Integrates with parallel route modal system
+
+   DESIGN NOTES:
+   • No UI changes — layout preserved exactly as provided
+   • Fully defensive fetch logic
+   • Safe JSON parsing + null guards
+   • Consistent with AddAllocationModal + Initiative modals
+--------------------------------------------------------- */
 export default function EditAllocationModal() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
   const apiUrl = "http://localhost:3001";
 
-  // Correct variable name
+  // Correct param name
   const emp_id = searchParams.get("emp_id");
 
+  /* ---------------------------------------------------------
+     STATE
+  --------------------------------------------------------- */
   const [loading, setLoading] = useState(true);
   const [employee, setEmployee] = useState(null);
   const [allocations, setAllocations] = useState([]);
@@ -19,6 +37,9 @@ export default function EditAllocationModal() {
   const [managers, setManagers] = useState([]);
   const [error, setError] = useState(null);
 
+  /* ---------------------------------------------------------
+     LOAD ALLOCATION DETAILS
+  --------------------------------------------------------- */
   useEffect(() => {
     if (!emp_id) {
       setError("No employee ID provided");
@@ -28,8 +49,8 @@ export default function EditAllocationModal() {
 
     async function load() {
       try {
-        // ⭐ Correct backend route
         const res = await fetch(`${apiUrl}/api/assignments-allocations/${emp_id}`);
+
         const json = await res.json();
 
         if (!res.ok) {
@@ -37,11 +58,11 @@ export default function EditAllocationModal() {
           return;
         }
 
-        // ⭐ Correct response shape
-        setEmployee(json.row.employee);
-        setAllocations(json.row.allocations);
-        setAssignment(json.row.assignment);
-        setManagers(json.dropdowns.managers);
+        // Expected backend response shape
+        setEmployee(json.row.employee || null);
+        setAllocations(json.row.allocations || []);
+        setAssignment(json.row.assignment || null);
+        setManagers(json.dropdowns.managers || []);
 
       } catch (err) {
         console.error("Modal load error:", err);
@@ -54,6 +75,9 @@ export default function EditAllocationModal() {
     load();
   }, [emp_id]);
 
+  /* ---------------------------------------------------------
+     LOADING STATE
+  --------------------------------------------------------- */
   if (loading) {
     return (
       <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
@@ -64,6 +88,9 @@ export default function EditAllocationModal() {
     );
   }
 
+  /* ---------------------------------------------------------
+     ERROR STATE
+  --------------------------------------------------------- */
   if (error || !employee) {
     return (
       <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
@@ -82,6 +109,9 @@ export default function EditAllocationModal() {
     );
   }
 
+  /* ---------------------------------------------------------
+     MODAL UI
+  --------------------------------------------------------- */
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
       <div className="bg-white text-black p-6 rounded-lg shadow-xl w-[450px] border border-black">

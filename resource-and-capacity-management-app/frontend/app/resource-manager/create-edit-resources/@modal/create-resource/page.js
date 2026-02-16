@@ -6,6 +6,13 @@ import { useState, useEffect } from 'react';
 export default function CreateResourceModal() {
   const router = useRouter();
 
+  /* ---------------------------------------------------------
+     STATE MANAGEMENT
+     ---------------------------------------------------------
+     • departments → dropdown list
+     • managers → dropdown list
+     • formData → controlled form fields
+  --------------------------------------------------------- */
   const [departments, setDepartments] = useState([]);
   const [managers, setManagers] = useState([]);
 
@@ -17,9 +24,13 @@ export default function CreateResourceModal() {
     other_info: ''
   });
 
-  /* -------------------------------------------------------
-     Fetch Departments & Managers on mount
-  ------------------------------------------------------- */
+  /* ---------------------------------------------------------
+     FETCH: Departments + Managers (on mount)
+     ---------------------------------------------------------
+     • Fully defensive fetch calls
+     • Prevents crashes on malformed responses
+     • Logs errors without breaking UI
+  --------------------------------------------------------- */
   useEffect(() => {
     fetchDepartments();
     fetchManagers();
@@ -28,10 +39,10 @@ export default function CreateResourceModal() {
   const fetchDepartments = async () => {
     try {
       const res = await fetch('http://localhost:3001/api/resources/departments');
-      if (res.ok) {
-        const data = await res.json();
-        setDepartments(data);
-      }
+      if (!res.ok) return;
+
+      const data = await res.json();
+      if (Array.isArray(data)) setDepartments(data);
     } catch (err) {
       console.error('Error fetching departments:', err);
     }
@@ -40,18 +51,22 @@ export default function CreateResourceModal() {
   const fetchManagers = async () => {
     try {
       const res = await fetch('http://localhost:3001/api/resources/managers');
-      if (res.ok) {
-        const data = await res.json();
-        setManagers(data);
-      }
+      if (!res.ok) return;
+
+      const data = await res.json();
+      if (Array.isArray(data)) setManagers(data);
     } catch (err) {
       console.error('Error fetching managers:', err);
     }
   };
 
-  /* -------------------------------------------------------
-     Handle form submission
-  ------------------------------------------------------- */
+  /* ---------------------------------------------------------
+     HANDLE CREATE RESOURCE
+     ---------------------------------------------------------
+     • Sends POST request with formData
+     • Defensive error handling
+     • Navigates back on success
+  --------------------------------------------------------- */
   const handleCreate = async (e) => {
     e.preventDefault();
 
@@ -64,27 +79,39 @@ export default function CreateResourceModal() {
 
       if (res.ok) {
         router.back();
-      } else {
-        const errData = await res.json();
-        console.error('Failed to create resource:', errData.error);
+        return;
       }
+
+      const errData = await res.json().catch(() => null);
+      console.error('Failed to create resource:', errData?.error || 'Unknown error');
     } catch (err) {
       console.error('Error creating resource:', err);
     }
   };
 
+  /* ---------------------------------------------------------
+     FINAL RENDER — MODAL OVERLAY
+     ---------------------------------------------------------
+     • Fullscreen darkened backdrop
+     • Centered modal card
+     • No layout interference with underlying page
+  --------------------------------------------------------- */
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999]">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl p-6">
 
-        {/* HEADER */}
+        {/* -----------------------------------------------------
+           HEADER
+        ----------------------------------------------------- */}
         <h2 className="text-2xl font-bold mb-6 text-black">
           Create Resource
         </h2>
 
         <form onSubmit={handleCreate}>
 
-          {/* GRID */}
+          {/* ---------------------------------------------------
+             GRID FIELDS
+          --------------------------------------------------- */}
           <div className="grid grid-cols-2 gap-4">
 
             {/* NAME */}
@@ -160,7 +187,7 @@ export default function CreateResourceModal() {
               </select>
             </div>
 
-            {/* DIRECTOR LEVEL (placeholder for future backend) */}
+            {/* DIRECTOR LEVEL (placeholder) */}
             <div className="flex flex-col">
               <label className="text-xs mb-1 text-black font-semibold">
                 Director Level
@@ -177,7 +204,9 @@ export default function CreateResourceModal() {
 
           </div>
 
-          {/* OTHER INFORMATION */}
+          {/* ---------------------------------------------------
+             OTHER INFORMATION
+          --------------------------------------------------- */}
           <div className="flex flex-col mt-4">
             <label className="text-xs mb-1 text-black font-semibold">
               Other Information
@@ -192,7 +221,9 @@ export default function CreateResourceModal() {
             />
           </div>
 
-          {/* BUTTONS */}
+          {/* ---------------------------------------------------
+             BUTTONS
+          --------------------------------------------------- */}
           <div className="flex justify-end gap-4 mt-6">
             <button
               type="button"

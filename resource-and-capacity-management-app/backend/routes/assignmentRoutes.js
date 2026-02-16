@@ -16,40 +16,41 @@ import {
 const router = express.Router();
 
 /* ---------------------------------------------------------
-   ALLOCATIONS — CLEAN REST ROUTES
+   ALLOCATIONS — REST ROUTES
+   (All handlers wrapped with asyncHandler inside controllers)
 --------------------------------------------------------- */
 
-// GET all allocations
+// List all allocations
 router.get("/", getAllAllocations);
 
-// GET dropdown data
+// Dropdown metadata (leaders, requestors, categories, etc.)
 router.get("/meta/dropdowns", getAllocationDropdowns);
 
-// GET department for an employee
+// Employee department lookup
 router.get("/employee/:empId/department", getDeptForEmployee);
 
-// GET a single employee
+// Single employee lookup
 router.get("/employee/:empId", getEmployee);
 
-// GET all DM employees
+// All DM employees
 router.get("/employees/dm", getDMEmployees);
 
-// GET all projects
+// All projects
 router.get("/projects", getProjects);
 
-// CREATE
+// Create new allocation
 router.post("/", createAllocation);
 
-// UPDATE amount
+// Update allocation amount only
 router.put("/:id/amount", editAllocationAmount);
 
-// UPDATE full allocation
+// Update full allocation record
 router.put("/:id", updateAllocation);
 
-// DELETE
+// Delete allocation
 router.delete("/:id", deleteAllocation);
 
-// ❗ MUST BE LAST — catch‑all
+// Must be last — fallback for single allocation lookup
 router.get("/:id", getAllocationById);
 
 export default router;

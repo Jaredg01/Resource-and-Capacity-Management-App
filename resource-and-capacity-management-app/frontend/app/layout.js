@@ -5,6 +5,13 @@ import "../styles/globals.css";
 
 import HeaderWrapper from "@/components/layout/HeaderWrapper";
 
+/* ---------------------------------------------------------
+   FONT CONFIGURATION
+   ---------------------------------------------------------
+   • Loads project-wide font families using Next.js font loader
+   • Exposes each font as a CSS variable for consistent usage
+   • Ensures fonts are preloaded and optimized for performance
+--------------------------------------------------------- */
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -25,13 +32,34 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body
         suppressHydrationWarning
-        className={`${geistSans.variable} ${geistMono.variable} ${outfit.variable} antialiased bg-gray-50`}
+        className={`
+          ${geistSans.variable}
+          ${geistMono.variable}
+          ${outfit.variable}
+          antialiased bg-gray-50
+        `}
       >
+
+        {/* -----------------------------------------------------
+           GLOBAL HEADER WRAPPER
+           -----------------------------------------------------
+           • Renders the authenticated header across all pages
+           • Automatically hides on routes where header is disabled
+           • Centralizes navigation and user session UI
+        ----------------------------------------------------- */}
         <HeaderWrapper />
 
+        {/* -----------------------------------------------------
+           MAIN CONTENT WRAPPER
+           -----------------------------------------------------
+           • Provides consistent horizontal padding across breakpoints
+           • Ensures content is centered and readable on all screens
+           • Acts as the primary container for all page-level content
+        ----------------------------------------------------- */}
         <main className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
           {children}
         </main>
+
       </body>
     </html>
   );

@@ -10,22 +10,22 @@ import {
 
 const router = express.Router();
 
-// GET /api/initiatives
+// List all initiatives
 router.get("/", getAllInitiatives);
 
-// GET /api/initiatives/dropdowns
+// Dropdown metadata (owners, statuses, categories, etc.)
 router.get("/dropdowns", getInitiativeDropdowns);
 
-// GET /api/initiatives/dept/search?name=John Doe
+// Search initiatives by department or DM name
 router.get("/dept/search", getInitiativesByDept);
 
-// POST /api/initiatives
+// Create new initiative
 router.post("/", createInitiative);
 
-// PUT /api/initiatives
+// Update existing initiative
 router.put("/", updateInitiative);
 
-// GET /api/initiatives/:id  <-- MUST BE LAST
+// Must be last — single initiative lookup
 router.get("/:id", getInitiativeById);
 
 export default router;

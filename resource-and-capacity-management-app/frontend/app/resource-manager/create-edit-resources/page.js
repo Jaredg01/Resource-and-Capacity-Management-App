@@ -34,6 +34,9 @@ export default function ResourcesPage() {
   const router = useRouter();
   const apiUrl = "http://localhost:3001";
 
+  // -------------------------------------------------------
+  // STATE
+  // -------------------------------------------------------
   const [user, setUser] = useState(null);
 
   const [employees, setEmployees] = useState([]);
@@ -74,18 +77,28 @@ export default function ResourcesPage() {
   const [editingCell, setEditingCell] = useState(null);
   const [editingValue, setEditingValue] = useState("");
 
-  // Load user from localStorage (for Mine filter)
+  // -------------------------------------------------------
+  // USER LOAD
+  // -------------------------------------------------------
   useEffect(() => {
-    const stored = localStorage.getItem("user");
-    if (stored) setUser(JSON.parse(stored));
+    try {
+      const stored = localStorage.getItem("user");
+      if (stored) setUser(JSON.parse(stored));
+    } catch {
+      // ignore malformed localStorage
+    }
   }, []);
 
-  // Enable portal
+  // -------------------------------------------------------
+  // PORTAL READY
+  // -------------------------------------------------------
   useEffect(() => {
     setPortalReady(true);
   }, []);
 
-  // Close dropdowns on outside click
+  // -------------------------------------------------------
+  // CLOSE MENUS ON OUTSIDE CLICK
+  // -------------------------------------------------------
   useEffect(() => {
     const handleClickOutside = () => {
       setShowNameMenu(false);
@@ -97,7 +110,9 @@ export default function ResourcesPage() {
     return () => window.removeEventListener("click", handleClickOutside);
   }, []);
 
-  // Fetch all data
+  // -------------------------------------------------------
+  // FETCH ALL DATA
+  // -------------------------------------------------------
   useEffect(() => {
     fetchAllData();
   }, []);
@@ -106,39 +121,42 @@ export default function ResourcesPage() {
     try {
       setLoading(true);
 
-const empRes = await fetch(`${apiUrl}/api/resources/employees`);
-const empData = await empRes.json();
+      const empRes = await fetch(`${apiUrl}/api/resources/employees`);
+      if (!empRes.ok) throw new Error("Failed to load employees");
+      const empData = await empRes.json();
 
-const deptRes = await fetch(`${apiUrl}/api/resources/departments`);
-const deptData = await deptRes.json();
-setDepartments(deptData);
+      const deptRes = await fetch(`${apiUrl}/api/resources/departments`);
+      if (!deptRes.ok) throw new Error("Failed to load departments");
+      const deptData = await deptRes.json();
+      setDepartments(Array.isArray(deptData) ? deptData : []);
 
-const mgrRes = await fetch(`${apiUrl}/api/resources/managers`);
-const mgrData = await mgrRes.json();
-setManagers(mgrData);
+      const mgrRes = await fetch(`${apiUrl}/api/resources/managers`);
+      if (!mgrRes.ok) throw new Error("Failed to load managers");
+      const mgrData = await mgrRes.json();
+      setManagers(Array.isArray(mgrData) ? mgrData : []);
 
       const employeesWithCap = await Promise.all(
-        empData.map(async (emp) => {
+        (Array.isArray(empData) ? empData : []).map(async (emp) => {
           try {
             const capRes = await fetch(
               `${apiUrl}/api/resources/employees/${emp.emp_id}/capacity`
             );
-            if (capRes.ok) {
-              const capData = await capRes.json();
-              const capacityByMonth = {};
-              capData.forEach((c) => {
-                capacityByMonth[c.date] = {
-                  amount: c.amount,
-                  status: c.current_status,
-                  comments: c.comments,
-                };
-              });
-              return { ...emp, capacity: capacityByMonth };
+            if (!capRes.ok) {
+              return { ...emp, capacity: {} };
             }
+            const capData = await capRes.json();
+            const capacityByMonth = {};
+            (Array.isArray(capData) ? capData : []).forEach((c) => {
+              capacityByMonth[c.date] = {
+                amount: c.amount,
+                status: c.current_status,
+                comments: c.comments,
+              };
+            });
+            return { ...emp, capacity: capacityByMonth };
           } catch {
-            // ignore
+            return { ...emp, capacity: {} };
           }
-          return { ...emp, capacity: {} };
         })
       );
 
@@ -154,12 +172,19 @@ setManagers(mgrData);
       setEmployeesWithCapacity(dataMgmt);
       setEmployees(dataMgmt);
 
-      setAvailableNames([...new Set(dataMgmt.map((e) => e.emp_name).filter(Boolean))]);
-      setAvailableTitles([...new Set(dataMgmt.map((e) => e.emp_title).filter(Boolean))]);
+      setAvailableNames([
+        ...new Set(dataMgmt.map((e) => e.emp_name).filter(Boolean)),
+      ]);
+
+      setAvailableTitles([
+        ...new Set(dataMgmt.map((e) => e.emp_title).filter(Boolean)),
+      ]);
 
       const getReportsToNameFromList = (id) => {
         if (!id && id !== 0) return null;
-        const match = employeesWithCap.find((e) => String(e.emp_id) === String(id));
+        const match = employeesWithCap.find(
+          (e) => String(e.emp_id) === String(id)
+        );
         return match ? match.emp_name : null;
       };
 
@@ -174,11 +199,13 @@ setManagers(mgrData);
       const getCurrentStatusLocal = (emp) => {
         const now = new Date();
         const key = now.getFullYear() * 100 + (now.getMonth() + 1);
-        return emp.capacity[key]?.status || "Active";
+        return emp.capacity?.[key]?.status || "Active";
       };
 
       setAvailableCurrentStatuses([
-        ...new Set(dataMgmt.map((e) => getCurrentStatusLocal(e)).filter(Boolean)),
+        ...new Set(
+          dataMgmt.map((e) => getCurrentStatusLocal(e)).filter(Boolean)
+        ),
       ]);
 
       setError("");
@@ -189,101 +216,9 @@ setManagers(mgrData);
     }
   };
 
-  // Apply filters
-  useEffect(() => {
-    applyFilters();
-  }, [
-    employeesWithCapacity,
-    activeFilter,
-    statusFilter,
-    searchTerm,
-    user,
-    nameSort,
-    selectedNames,
-    selectedTitles,
-    selectedReportsTo,
-    selectedCurrentStatuses,
-    departments,
-  ]);
-
-  const applyFilters = () => {
-    let filtered = [...employeesWithCapacity];
-
-    if (activeFilter === "mine" && user) {
-      filtered = filtered.filter(
-        (emp) => String(emp.emp_id) === String(user.emp_id)
-      );
-    }
-
-    if (statusFilter !== "all") {
-      filtered = filtered.filter((emp) => {
-        const now = new Date();
-        const key = now.getFullYear() * 100 + (now.getMonth() + 1);
-        const cap = emp.capacity[key];
-        return statusFilter === "active"
-          ? !cap || cap.status === "Active"
-          : cap && cap.status === "Inactive";
-      });
-    }
-
-    if (searchTerm) {
-      const t = searchTerm.toLowerCase();
-      filtered = filtered.filter(
-        (e) =>
-          e.emp_name.toLowerCase().includes(t) ||
-          e.emp_title.toLowerCase().includes(t)
-      );
-    }
-
-    const deptName = (no) =>
-      departments.find((d) => d.dept_no === no)?.dept_name || "";
-
-    filtered = filtered.filter(
-      (e) => deptName(e.dept_no).toLowerCase() === "data mgmt"
-    );
-
-    if (selectedNames.length > 0) {
-      filtered = filtered.filter((e) => selectedNames.includes(e.emp_name));
-    }
-
-    if (selectedTitles.length > 0) {
-      filtered = filtered.filter((e) => selectedTitles.includes(e.emp_title));
-    }
-
-    const getReportsToName = (emp) => {
-      const match = allEmployeesWithCapacity.find(
-        (e) => String(e.emp_id) === String(emp.reports_to)
-      );
-      return match ? match.emp_name : "-";
-    };
-
-    if (selectedReportsTo.length > 0) {
-      filtered = filtered.filter((e) =>
-        selectedReportsTo.includes(getReportsToName(e))
-      );
-    }
-
-    const getCurrentStatus = (emp) => {
-      const now = new Date();
-      const key = now.getFullYear() * 100 + (now.getMonth() + 1);
-      return emp.capacity[key]?.status || "Active";
-    };
-
-    if (selectedCurrentStatuses.length > 0) {
-      filtered = filtered.filter((e) =>
-        selectedCurrentStatuses.includes(getCurrentStatus(e))
-      );
-    }
-
-    if (nameSort === "az") {
-      filtered.sort((a, b) => a.emp_name.localeCompare(b.emp_name));
-    } else if (nameSort === "za") {
-      filtered.sort((a, b) => b.emp_name.localeCompare(a.emp_name));
-    }
-
-    setEmployees(filtered);
-  };
-
+  // -------------------------------------------------------
+  // HELPERS
+  // -------------------------------------------------------
   const toggleSelection = (value, setFn, current) => {
     setFn(
       current.includes(value)
@@ -311,7 +246,7 @@ setManagers(mgrData);
   const getCurrentStatus = (emp) => {
     const now = new Date();
     const key = now.getFullYear() * 100 + (now.getMonth() + 1);
-    return emp.capacity[key]?.status || "Active";
+    return emp.capacity?.[key]?.status || "Active";
   };
 
   const getMonthValue = (emp, key) =>
@@ -409,6 +344,87 @@ setManagers(mgrData);
     );
   };
 
+  // -------------------------------------------------------
+  // APPLY FILTERS
+  // -------------------------------------------------------
+  useEffect(() => {
+    let filtered = [...employeesWithCapacity];
+
+    if (activeFilter === "mine" && user) {
+      filtered = filtered.filter(
+        (emp) => String(emp.emp_id) === String(user.emp_id)
+      );
+    }
+
+    if (statusFilter !== "all") {
+      filtered = filtered.filter((emp) => {
+        const status = getCurrentStatus(emp);
+        return statusFilter === "active"
+          ? status === "Active"
+          : status === "Inactive";
+      });
+    }
+
+    if (searchTerm) {
+      const t = searchTerm.toLowerCase();
+      filtered = filtered.filter(
+        (e) =>
+          e.emp_name.toLowerCase().includes(t) ||
+          e.emp_title.toLowerCase().includes(t)
+      );
+    }
+
+    const deptName = (no) =>
+      departments.find((d) => d.dept_no === no)?.dept_name || "";
+
+    filtered = filtered.filter(
+      (e) => deptName(e.dept_no).toLowerCase() === "data mgmt"
+    );
+
+    if (selectedNames.length > 0) {
+      filtered = filtered.filter((e) => selectedNames.includes(e.emp_name));
+    }
+
+    if (selectedTitles.length > 0) {
+      filtered = filtered.filter((e) => selectedTitles.includes(e.emp_title));
+    }
+
+    if (selectedReportsTo.length > 0) {
+      filtered = filtered.filter((e) =>
+        selectedReportsTo.includes(getReportsToName(e))
+      );
+    }
+
+    if (selectedCurrentStatuses.length > 0) {
+      filtered = filtered.filter((e) =>
+        selectedCurrentStatuses.includes(getCurrentStatus(e))
+      );
+    }
+
+    if (nameSort === "az") {
+      filtered.sort((a, b) => a.emp_name.localeCompare(b.emp_name));
+    } else if (nameSort === "za") {
+      filtered.sort((a, b) => b.emp_name.localeCompare(a.emp_name));
+    }
+
+    setEmployees(filtered);
+  }, [
+    employeesWithCapacity,
+    activeFilter,
+    statusFilter,
+    searchTerm,
+    user,
+    nameSort,
+    selectedNames,
+    selectedTitles,
+    selectedReportsTo,
+    selectedCurrentStatuses,
+    departments,
+  ]);
+
+  // -------------------------------------------------------
+  // LOADING STATE
+  // -------------------------------------------------------
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -417,52 +433,52 @@ setManagers(mgrData);
     );
   }
 
+  // -------------------------------------------------------
+  // RENDER
+  // -------------------------------------------------------
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-<div className="max-w-full mx-auto">
+      <div className="max-w-full mx-auto">
+        {/* Title + Create + Back */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <h2
+              className="text-2xl font-bold text-gray-900"
+              style={styles.outfitFont}
+            >
+              Resources
+            </h2>
 
-  {/* Title + Create + Back */}
-  <div className="flex items-center justify-between mb-6">
+            <button
+              onClick={() => router.push("/resource-manager/dashboard")}
+              className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition text-sm cursor-pointer"
+              style={styles.outfitFont}
+            >
+              ← Back to Dashboard
+            </button>
+          </div>
 
-    <div className="flex items-center gap-4">
-      <h2
-        className="text-2xl font-bold text-gray-900"
-        style={styles.outfitFont}
-      >
-      Resources 
-      </h2>
+          <Link
+            href="/resource-manager/create-edit-resources/create-resource"
+            className="px-4 py-2 bg-[#017ACB] text-white rounded hover:bg-blue-700 transition text-sm cursor-pointer"
+            style={styles.outfitFont}
+          >
+            + Create Resource
+          </Link>
+        </div>
 
-      <button
-        onClick={() => router.push("/resource-manager/dashboard")}
-        className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition text-sm cursor-pointer"
-        style={styles.outfitFont}
-      >
-        ← Back to Dashboard
-      </button>
-    </div>
-
-    <Link
-      href="/resource-manager/create-edit-resources/create-resource"
-      className="px-4 py-2 bg-[#017ACB] text-white rounded hover:bg-blue-700 transition text-sm cursor-pointer"
-      style={styles.outfitFont}
-    >
-      + Create Resource
-    </Link>
-
-  </div>
-
-  {/* Error */}
-  {error && (
-    <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
-      {error}
-      <button
-        onClick={() => setError("")}
-        className="ml-4 text-red-900 font-bold"
-      >
-        ×
-      </button>
-    </div>
-  )}
+        {/* Error */}
+        {error && (
+          <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+            {error}
+            <button
+              onClick={() => setError("")}
+              className="ml-4 text-red-900 font-bold"
+            >
+              ×
+            </button>
+          </div>
+        )}
 
         {/* Filters */}
         <div className="mb-4 flex flex-wrap gap-4 items-center justify-between">
@@ -560,7 +576,9 @@ setManagers(mgrData);
 
                           <div
                             className={`px-3 py-2 cursor-pointer text-sm hover:bg-gray-200 ${
-                              nameSort === "az" ? "bg-gray-100 font-semibold" : ""
+                              nameSort === "az"
+                                ? "bg-gray-100 font-semibold"
+                                : ""
                             }`}
                             onClick={() => {
                               setNameSort("az");
@@ -572,7 +590,9 @@ setManagers(mgrData);
 
                           <div
                             className={`px-3 py-2 cursor-pointer text-sm hover:bg-gray-200 ${
-                              nameSort === "za" ? "bg-gray-100 font-semibold" : ""
+                              nameSort === "za"
+                                ? "bg-gray-100 font-semibold"
+                                : ""
                             }`}
                             onClick={() => {
                               setNameSort("za");
@@ -711,7 +731,8 @@ setManagers(mgrData);
                           <div
                             className={`px-3 py-2 cursor-pointer text-sm hover:bg-gray-200 flex items-center gap-2 ${
                               selectedReportsTo.length === 0 ||
-                              selectedReportsTo.length === availableReportsTo.length
+                              selectedReportsTo.length ===
+                                availableReportsTo.length
                                 ? "bg-gray-100 font-semibold"
                                 : ""
                             }`}
@@ -721,7 +742,8 @@ setManagers(mgrData);
                               type="checkbox"
                               checked={
                                 selectedReportsTo.length === 0 ||
-                                selectedReportsTo.length === availableReportsTo.length
+                                selectedReportsTo.length ===
+                                  availableReportsTo.length
                               }
                               readOnly
                             />
@@ -829,7 +851,9 @@ setManagers(mgrData);
                             >
                               <input
                                 type="checkbox"
-                                checked={selectedCurrentStatuses.includes(status)}
+                                checked={selectedCurrentStatuses.includes(
+                                  status
+                                )}
                                 readOnly
                               />
                               {status}

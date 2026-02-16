@@ -1,3 +1,4 @@
+// Manage MongoDB connection and helpers
 import { MongoClient, ServerApiVersion } from "mongodb";
 
 let client;
@@ -14,11 +15,7 @@ if (!process.env.MONGODB_URI) {
   console.warn("⚠️  MONGODB_URI not set. Using local MongoDB instance.");
 }
 
-/* ---------------------------------------------------------
-   CONNECT TO DATABASE
-   - Reuses global client in dev to prevent duplicate connections
-   - Ensures stable DB access across all controllers
---------------------------------------------------------- */
+// Connect to database
 export async function connectDB() {
   if (db) {
     if (LOG_DB) console.log("Using existing MongoDB connection");
@@ -26,14 +23,13 @@ export async function connectDB() {
   }
 
   try {
-    // Reuse global client in dev to avoid hot-reload reconnects
     if (!client) {
       client = new MongoClient(uri, {
         serverApi: {
           version: ServerApiVersion.v1,
           strict: false,
-          deprecationErrors: true,
-        },
+          deprecationErrors: true
+        }
       });
     }
 
@@ -51,10 +47,7 @@ export async function connectDB() {
   }
 }
 
-/* ---------------------------------------------------------
-   GET ACTIVE DB INSTANCE
-   - Throws if connectDB() hasn't been called yet
---------------------------------------------------------- */
+// Get active DB instance
 export function getDB() {
   if (!db) {
     throw new Error("Database not initialized. Call connectDB() first.");
@@ -62,10 +55,7 @@ export function getDB() {
   return db;
 }
 
-/* ---------------------------------------------------------
-   GET A SPECIFIC COLLECTION
-   - Cleaner than calling db.collection("name") everywhere
---------------------------------------------------------- */
+// Get a specific collection
 export function getCollection(name) {
   if (!db) {
     throw new Error("Database not initialized. Call connectDB() first.");
@@ -73,9 +63,7 @@ export function getCollection(name) {
   return db.collection(name);
 }
 
-/* ---------------------------------------------------------
-   CLOSE CONNECTION (optional for tests or shutdown)
---------------------------------------------------------- */
+// Close database connection
 export async function closeDB() {
   if (client) {
     await client.close();

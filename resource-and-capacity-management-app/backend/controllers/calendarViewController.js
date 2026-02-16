@@ -1,8 +1,6 @@
+// Get available calendar months
 import { connectDB } from "../config/db.js";
 
-/* ---------------------------------------------------------
-   Helper: Convert YYYYMM → "Jan-25"
---------------------------------------------------------- */
 function formatMonthLabel(yyyymm) {
   const s = String(yyyymm);
   const year = Number(s.slice(0, 4));
@@ -15,21 +13,12 @@ function formatMonthLabel(yyyymm) {
   return `${shortMonth}-${shortYear}`;
 }
 
-/* ---------------------------------------------------------
-   GET → AVAILABLE MONTHS
---------------------------------------------------------- */
 export const getAvailableMonths = async (req, res) => {
   try {
-    console.log("DEBUG: Entering GET /calendar-view");
-
     const db = await connectDB();
-    console.log("DEBUG: Connected to DB");
-
     const allocationCol = db.collection("allocation");
-    console.log("DEBUG: allocationCol exists =", !!allocationCol);
 
     const rawMonths = await allocationCol.distinct("date");
-    console.log("DEBUG: rawMonths =", rawMonths);
 
     return res.json({
       success: true,
@@ -41,7 +30,7 @@ export const getAvailableMonths = async (req, res) => {
     });
 
   } catch (err) {
-    console.error("🔥 ERROR in GET /calendar-view:", err);
+    console.error("Error in GET /calendar-view:", err);
     return res.status(500).json({
       success: false,
       error: "Failed to load available months"
@@ -49,9 +38,7 @@ export const getAvailableMonths = async (req, res) => {
   }
 };
 
-/* ---------------------------------------------------------
-   POST → ACTIVITIES GROUPED BY MONTH
---------------------------------------------------------- */
+// Get activities grouped by month
 export const getActivitiesByMonth = async (req, res) => {
   try {
     const { months, emp_id } = req.body;
@@ -103,6 +90,7 @@ export const getActivitiesByMonth = async (req, res) => {
       success: true,
       activitiesByMonth
     });
+
   } catch (err) {
     console.error("Error in POST /calendar-view:", err);
     return res.status(500).json({

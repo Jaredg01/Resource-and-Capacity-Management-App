@@ -3,7 +3,7 @@ import { getSummary } from "../controllers/summaryController.js";
 
 const router = express.Router();
 
-// GET /api/summary?filter=mine&username=lmitchell
+// Get summary data
 router.get("/", getSummary);
 
 export default router;

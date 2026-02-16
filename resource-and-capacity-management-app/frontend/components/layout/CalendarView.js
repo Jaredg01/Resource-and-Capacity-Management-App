@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import api from '@/lib/api'; // axios client
+import api from '@/lib/api';
 import { useRouter } from 'next/navigation';
 
 const styles = {
@@ -10,6 +10,9 @@ const styles = {
 
 /* ---------------------------------------------------------
    MONTH → LINEAR INDEX CONVERSION
+   ---------------------------------------------------------
+   • Converts YYYYMM into a sortable linear index
+   • Used for contiguous month selection logic
 --------------------------------------------------------- */
 const monthToIndex = (yyyymm) => {
   const year = Math.floor(yyyymm / 100);
@@ -20,9 +23,18 @@ const monthToIndex = (yyyymm) => {
 export default function CalendarView() {
   const router = useRouter();
 
-  /* -------------------------------------------------------
+  /* ---------------------------------------------------------
      STATE MANAGEMENT
-  ------------------------------------------------------- */
+     ---------------------------------------------------------
+     • user → authenticated user object
+     • availableMonths → all months returned by backend
+     • selectedMonths → contiguous selection (1–3 months)
+     • activitiesByMonth → grouped activities for each month
+     • filterMode → "all" or "mine"
+     • showSelector → floating panel visibility
+     • shake → invalid selection animation
+     • loading flags → prevent UI flash
+  --------------------------------------------------------- */
   const [user, setUser] = useState(null);
   const [availableMonths, setAvailableMonths] = useState([]);
   const [selectedMonths, setSelectedMonths] = useState([]);
@@ -34,33 +46,55 @@ export default function CalendarView() {
   const [loadingUser, setLoadingUser] = useState(true);
   const [loadingMonths, setLoadingMonths] = useState(true);
   const [loadingCalendar, setLoadingCalendar] = useState(true);
-  
 
-  /* -------------------------------------------------------
-     LOAD USER FROM LOCAL STORAGE
-  ------------------------------------------------------- */
+  /* ---------------------------------------------------------
+     LOAD USER FROM LOCAL STORAGE (SECURE)
+     ---------------------------------------------------------
+     • Defensive JSON parsing
+     • Redirects to login if missing
+  --------------------------------------------------------- */
   useEffect(() => {
-    const userData = localStorage.getItem('user');
+    try {
+      const stored = localStorage.getItem('user');
+      if (!stored) {
+        router.push('/login');
+        return;
+      }
 
-    if (!userData) {
+      const parsed = JSON.parse(stored);
+      if (!parsed?.emp_id) {
+        console.warn('Invalid user object — forcing logout');
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        router.push('/login');
+        return;
+      }
+
+      setUser(parsed);
+    } catch (err) {
+      console.error('LocalStorage parse error:', err);
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
       router.push('/login');
-      return;
+    } finally {
+      setLoadingUser(false);
     }
-
-    setUser(JSON.parse(userData));
-    setLoadingUser(false);
   }, [router]);
 
-  /* -------------------------------------------------------
+  /* ---------------------------------------------------------
      LOAD AVAILABLE MONTHS
-  ------------------------------------------------------- */
+     ---------------------------------------------------------
+     • Fetches all months with activity data
+     • Selects current month or closest available
+     • Fully defensive against missing backend fields
+  --------------------------------------------------------- */
   useEffect(() => {
     async function loadMonths() {
       try {
         const res = await api.get('/calendar-view');
-        const data = res.data;
+        const data = res?.data;
 
-        if (!data.success) throw new Error('Failed to load months');
+        if (!data?.success) throw new Error('Failed to load months');
 
         const formatted = data.formatted || [];
         setAvailableMonths(formatted);
@@ -94,9 +128,13 @@ export default function CalendarView() {
     loadMonths();
   }, []);
 
-  /* -------------------------------------------------------
+  /* ---------------------------------------------------------
      LOAD ACTIVITIES FOR SELECTED MONTHS
-  ------------------------------------------------------- */
+     ---------------------------------------------------------
+     • Fetches activities for 1–3 selected months
+     • Applies "mine" filter when selected
+     • Sorts months chronologically
+  --------------------------------------------------------- */
   useEffect(() => {
     if (!user || selectedMonths.length === 0) {
       setActivitiesByMonth([]);
@@ -112,8 +150,8 @@ export default function CalendarView() {
           ...(filterMode === 'mine' ? { emp_id: user.emp_id } : {})
         });
 
-        const data = res.data;
-        if (!data.success) throw new Error('Failed to load activities');
+        const data = res?.data;
+        if (!data?.success) throw new Error('Failed to load activities');
 
         const sorted = (data.activitiesByMonth || [])
           .slice()
@@ -130,26 +168,30 @@ export default function CalendarView() {
     loadCalendar();
   }, [selectedMonths, filterMode, user]);
 
-  /* -------------------------------------------------------
+  /* ---------------------------------------------------------
      AUTO-CLOSE MONTH SELECTOR
-  ------------------------------------------------------- */
+  --------------------------------------------------------- */
   useEffect(() => {
     if (selectedMonths.length === 0 && showSelector) {
       setShowSelector(false);
     }
   }, [selectedMonths, showSelector]);
 
-  /* -------------------------------------------------------
+  /* ---------------------------------------------------------
      SHAKE ANIMATION
-  ------------------------------------------------------- */
+  --------------------------------------------------------- */
   const triggerShake = () => {
     setShake(true);
     setTimeout(() => setShake(false), 150);
   };
 
-  /* -------------------------------------------------------
+  /* ---------------------------------------------------------
      CONTIGUOUS MONTH SELECTION LOGIC
-  ------------------------------------------------------- */
+     ---------------------------------------------------------
+     • Allows selecting 1–3 consecutive months
+     • Prevents gaps
+     • Prevents removing middle month
+  --------------------------------------------------------- */
   const toggleMonth = (yyyymm) => {
     const idx = monthToIndex(yyyymm);
 
@@ -204,16 +246,16 @@ export default function CalendarView() {
     }
   };
 
-  /* -------------------------------------------------------
+  /* ---------------------------------------------------------
      APPLY FILTERS
-  ------------------------------------------------------- */
+  --------------------------------------------------------- */
   const applyFilters = () => {
     setShowSelector(false);
   };
 
-  /* -------------------------------------------------------
+  /* ---------------------------------------------------------
      GROUP ACTIVITIES BY CATEGORY
-  ------------------------------------------------------- */
+  --------------------------------------------------------- */
   const groupByCategory = (activities) => {
     const groups = {
       Baseline: [],
@@ -231,9 +273,9 @@ export default function CalendarView() {
     return groups;
   };
 
-  /* -------------------------------------------------------
+  /* ---------------------------------------------------------
      LOADING STATE
-  ------------------------------------------------------- */
+  --------------------------------------------------------- */
   if (loadingUser || loadingMonths || loadingCalendar) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -242,9 +284,9 @@ export default function CalendarView() {
     );
   }
 
-  /* -------------------------------------------------------
+  /* ---------------------------------------------------------
      GRID LAYOUT CALCULATIONS
-  ------------------------------------------------------- */
+  --------------------------------------------------------- */
   const gridCols =
     selectedMonths.length === 1
       ? 'grid-cols-1'
@@ -255,32 +297,32 @@ export default function CalendarView() {
   const gridWidth =
     selectedMonths.length === 3 ? 'max-w-[95%]' : 'max-w-[70%]';
 
-  /* -------------------------------------------------------
+  /* ---------------------------------------------------------
      FINAL RENDER
-  ------------------------------------------------------- */
+  --------------------------------------------------------- */
   return (
     <div className="w-full relative">
-
       <main className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 relative">
 
-      <div className="flex items-center justify-between mb-6">
-  <div className="flex items-center gap-4">
-    <h2
-      className="text-3xl font-bold text-black"
-      style={styles.outfitFont}
-    >
-      Calendar View
-    </h2>
+        {/* PAGE HEADER */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <h2
+              className="text-3xl font-bold text-black"
+              style={styles.outfitFont}
+            >
+              Calendar View
+            </h2>
 
-    <button
-      onClick={() => router.back()}
-      className="px-4 py-2 rounded text-sm bg-white text-gray-700 border hover:bg-gray-100 transition"
-      style={styles.outfitFont}
-    >
-      Back to Dashboard
-    </button>
-  </div>
-</div>
+            <button
+              onClick={() => router.back()}
+              className="px-4 py-2 rounded text-sm bg-white text-gray-700 border hover:bg-gray-100 transition"
+              style={styles.outfitFont}
+            >
+              Back to Dashboard
+            </button>
+          </div>
+        </div>
 
         <div className="relative flex justify-center w-full">
 
@@ -305,11 +347,16 @@ export default function CalendarView() {
               return (
                 <div
                   key={month.yyyymm}
-                  className={`flex flex-col border-black ${index > 0 ? 'border-l' : ''}`}
+                  className={`flex flex-col border-black ${
+                    index > 0 ? 'border-l' : ''
+                  }`}
                 >
                   {/* MONTH HEADER */}
                   <div className="px-6 py-3 border-b border-black bg-white relative flex items-center">
-                    <h3 className="text-2xl font-bold text-black" style={styles.outfitFont}>
+                    <h3
+                      className="text-2xl font-bold text-black"
+                      style={styles.outfitFont}
+                    >
                       {month.label}
                     </h3>
 
@@ -319,7 +366,11 @@ export default function CalendarView() {
                           absolute
                           right-2.5
                           text-black text-4xl font-normal cursor-pointer select-none
-                          ${selectedMonths.length === 0 ? 'opacity-40 cursor-default' : ''}
+                          ${
+                            selectedMonths.length === 0
+                              ? 'opacity-40 cursor-default'
+                              : ''
+                          }
                         `}
                         style={{
                           transform:

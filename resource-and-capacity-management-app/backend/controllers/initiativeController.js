@@ -1,9 +1,8 @@
+// Initiative operations
 import { ObjectId } from "mongodb";
 import { connectDB } from "../config/db.js";
 
-/* ---------------------------------------------------------
-   GET ALL INITIATIVES
---------------------------------------------------------- */
+// Get all initiatives
 export const getAllInitiatives = async (req, res) => {
   try {
     const db = await connectDB();
@@ -67,15 +66,14 @@ export const getAllInitiatives = async (req, res) => {
     }
 
     return res.json({ allAssignments, myInitiatives });
+
   } catch (err) {
     console.error("Initiatives GET error:", err);
     return res.status(500).json({ error: "Server error" });
   }
 };
 
-/* ---------------------------------------------------------
-   GET ONE INITIATIVE (SAFE)
---------------------------------------------------------- */
+// Get initiative by ID
 export const getInitiativeById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -85,24 +83,23 @@ export const getInitiativeById = async (req, res) => {
     }
 
     const db = await connectDB();
-    const data = await db
-      .collection("assignment")
-      .findOne({ _id: new ObjectId(id) });
+    const data = await db.collection("assignment").findOne({
+      _id: new ObjectId(id)
+    });
 
     if (!data) {
       return res.status(404).json({ error: "Initiative not found" });
     }
 
     return res.json(data);
+
   } catch (err) {
     console.error("GetOne initiative error:", err);
     return res.status(500).json({ error: "Failed to load initiative" });
   }
 };
 
-/* ---------------------------------------------------------
-   GET DEPARTMENT BY VP NAME
---------------------------------------------------------- */
+// Get initiative department by employee name
 export const getInitiativesByDept = async (req, res) => {
   try {
     const db = await connectDB();
@@ -113,34 +110,30 @@ export const getInitiativesByDept = async (req, res) => {
     }
 
     const emp = await db.collection("employee").findOne({ emp_name: name });
-
     if (!emp) {
       return res.status(404).json({ error: `Employee "${name}" not found` });
     }
 
-    const dept = await db
-      .collection("department")
-      .findOne({ dept_no: emp.dept_no });
+    const dept = await db.collection("department").findOne({
+      dept_no: emp.dept_no
+    });
 
     return res.json({
       dept_no: emp.dept_no,
       dept_name: dept?.dept_name || ""
     });
+
   } catch (err) {
     console.error("GetDept initiative error:", err);
     return res.status(500).json({ error: "Server error" });
   }
 };
 
-/* ---------------------------------------------------------
-   DROPDOWNS (LEADS + REQUESTORS)
---------------------------------------------------------- */
+// Get dropdown values for initiatives
 export const getInitiativeDropdowns = async (req, res) => {
-  console.log("🔥 DROPDOWNS HIT");
   try {
     const db = await connectDB();
 
-    // LEADS = acc_type_id = 1
     const leads = await db.collection("account").aggregate([
       { $match: { "account.acc_type_id": 1 } },
       {
@@ -155,7 +148,6 @@ export const getInitiativeDropdowns = async (req, res) => {
       { $project: { _id: 0, emp_name: "$employee_info.emp_name" } }
     ]).toArray();
 
-    // REQUESTORS = acc_type_id in [1, 2]
     const requestors = await db.collection("account").aggregate([
       { $match: { "account.acc_type_id": { $in: [1, 2] } } },
       {
@@ -177,15 +169,14 @@ export const getInitiativeDropdowns = async (req, res) => {
     ]).toArray();
 
     return res.json({ employees: leads, requestors });
+
   } catch (err) {
     console.error("Dropdown API error:", err);
     return res.status(500).json({ error: "Failed to load employee names" });
   }
 };
 
-/* ---------------------------------------------------------
-   CREATE INITIATIVE
---------------------------------------------------------- */
+// Create initiative
 export const createInitiative = async (req, res) => {
   try {
     const db = await connectDB();
@@ -203,7 +194,6 @@ export const createInitiative = async (req, res) => {
       resource_consideration
     } = req.body;
 
-    // Required fields
     const required = {
       project,
       category,
@@ -229,7 +219,6 @@ export const createInitiative = async (req, res) => {
       });
     }
 
-    // Validate users
     const validateUser = async (name, accTypes) => {
       const result = await db.collection("account").aggregate([
         { $match: { "account.acc_type_id": { $in: accTypes } } },
@@ -249,15 +238,20 @@ export const createInitiative = async (req, res) => {
     };
 
     const leadValid = await validateUser(lead, [1]);
-    if (!leadValid) return res.status(400).json({ error: `Lead "${lead}" is not valid.` });
+    if (!leadValid) {
+      return res.status(400).json({ error: `Lead "${lead}" is not valid.` });
+    }
 
     const requestorValid = await validateUser(requestor, [1, 2]);
-    if (!requestorValid) return res.status(400).json({ error: `Requestor "${requestor}" is not valid.` });
+    if (!requestorValid) {
+      return res.status(400).json({ error: `Requestor "${requestor}" is not valid.` });
+    }
 
     const vpValid = await validateUser(requestor_vp, [1, 2]);
-    if (!vpValid) return res.status(400).json({ error: `Requestor VP "${requestor_vp}" is not valid.` });
+    if (!vpValid) {
+      return res.status(400).json({ error: `Requestor VP "${requestor_vp}" is not valid.` });
+    }
 
-    // Auto department
     const deptRecord = await db.collection("department").findOne({
       dept_no: vpValid.dept_no
     });
@@ -282,15 +276,14 @@ export const createInitiative = async (req, res) => {
     const result = await db.collection("assignment").insertOne(newInitiative);
 
     return res.json({ success: true, insertedId: result.insertedId });
+
   } catch (err) {
     console.error("Add Initiative API error:", err);
     return res.status(500).json({ error: "Failed to add initiative" });
   }
 };
 
-/* ---------------------------------------------------------
-   UPDATE INITIATIVE
---------------------------------------------------------- */
+// Update initiative
 export const updateInitiative = async (req, res) => {
   try {
     const db = await connectDB();
@@ -369,6 +362,7 @@ export const updateInitiative = async (req, res) => {
     );
 
     return res.json({ success: true });
+
   } catch (err) {
     console.error("Edit Initiative API error:", err);
     return res.status(500).json({ error: "Failed to update initiative" });

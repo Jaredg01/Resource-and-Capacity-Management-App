@@ -15,49 +15,90 @@ export default function ProfileCard() {
   const router = useRouter();
 
   /* ---------------------------------------------------------
-     LOAD USER + FETCH PROFILE
+     SECURITY: LOAD USER + SAFE PROFILE FETCH
+     ---------------------------------------------------------
+     • Validates localStorage session before making API calls
+     • Protects against malformed JSON in localStorage
+     • Sanitizes username before sending to backend
+     • Uses try/catch to prevent UI crashes on bad responses
   --------------------------------------------------------- */
   useEffect(() => {
-    const userData = localStorage.getItem('user');
+    let parsedUser = null;
 
-    if (!userData) return;
+    try {
+      const stored = localStorage.getItem('user');
+      if (!stored) return;
 
-    const parsed = JSON.parse(userData);
+      parsedUser = JSON.parse(stored);
 
-   async function loadProfile() {
-  try {
-    setUser(parsed);
+      // Defensive: ensure required fields exist
+      if (!parsedUser?.username) {
+        console.warn('Invalid user object — forcing logout');
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        router.push('/login');
+        return;
+      }
+    } catch (err) {
+      console.error('LocalStorage parse error:', err);
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+      router.push('/login');
+      return;
+    }
 
-    const res = await api.get(
-      `/profile?username=${encodeURIComponent(parsed.username)}`
-    );
+    async function loadProfile() {
+      try {
+        setUser(parsedUser);
 
-    setProfile(res.data);
-  } catch (err) {
-    console.error("Profile fetch error:", err);
-  }
-}
+        // Encode username to prevent injection or malformed URLs
+        const safeUsername = encodeURIComponent(parsedUser.username);
+
+        const res = await api.get(`/profile?username=${safeUsername}`);
+
+        // Defensive: ensure backend returned expected structure
+        if (!res?.data) {
+          console.warn('Profile response missing data');
+          return;
+        }
+
+        setProfile(res.data);
+      } catch (err) {
+        console.error('Profile fetch error:', err);
+
+        // Optional: auto‑logout on 401/403
+        if (err?.response?.status === 401 || err?.response?.status === 403) {
+          localStorage.removeItem('user');
+          localStorage.removeItem('token');
+          router.push('/login');
+        }
+      }
+    }
 
     loadProfile();
-  }, []);
+  }, [router]);
 
   /* ---------------------------------------------------------
-     LOGOUT
+     SECURITY: LOGOUT HANDLER
+     ---------------------------------------------------------
+     • Clears all auth data from localStorage
+     • Removes Axios Authorization header
+     • Redirects user to login screen
   --------------------------------------------------------- */
-const handleLogout = () => {
-  // Clear stored auth data
-  localStorage.removeItem("token");
-  localStorage.removeItem("user");
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
 
-  // Optional: clear Axios auth header
-  delete api.defaults.headers.common["Authorization"];
+    delete api.defaults.headers.common['Authorization'];
 
-  // Redirect to login
-  router.push("/login");
-};
+    router.push('/login');
+  };
 
   /* ---------------------------------------------------------
      LOADING STATE
+     ---------------------------------------------------------
+     • Prevents UI flash while validating session
+     • Ensures profile is fully loaded before rendering
   --------------------------------------------------------- */
   if (!user || !profile) {
     return (
@@ -69,6 +110,9 @@ const handleLogout = () => {
 
   /* ---------------------------------------------------------
      FINAL RENDER
+     ---------------------------------------------------------
+     • Displays validated user profile
+     • Uses clean, accessible layout
   --------------------------------------------------------- */
   return (
     <div className="w-full max-w-3xl mx-auto bg-white rounded-xl shadow-md border border-gray-200 p-10">

@@ -1,4 +1,4 @@
-import "./loadEnv.js";
+import "./loadEnv.js"; // Load env vars before anything else
 
 import express from "express";
 import cors from "cors";
@@ -7,10 +7,10 @@ import cookieParser from "cookie-parser";
 import { connectDB } from "./config/db.js";
 
 // Middleware
-import securityHeaders from "./middleware/security.js";
-import httpsRedirect from "./middleware/httpsRedirect.js";
-import corsOptions from "./middleware/corsOptions.js";
-import { errorHandler } from "./middleware/errorHandler.js";
+import securityHeaders from "./middleware/security.js"; // Security headers (CSP, HSTS, XSS, etc.)
+import httpsRedirect from "./middleware/httpsRedirect.js"; // Enforce HTTPS in production
+import corsOptions from "./middleware/corsOptions.js"; // CORS whitelist
+import { errorHandler } from "./middleware/errorHandler.js"; // Centralized error handler
 
 // Routes
 import authRoutes from "./routes/authRoutes.js";
@@ -30,13 +30,13 @@ const port = process.env.PORT || 3001;
 // -----------------------------------------------------------------------------
 // Global Middleware
 // -----------------------------------------------------------------------------
-app.disable("x-powered-by");
+app.disable("x-powered-by"); // Hide Express signature
 
-app.use(securityHeaders);
-app.use(httpsRedirect);
-app.use(cors(corsOptions));
-app.use(express.json());
-app.use(cookieParser());
+app.use(securityHeaders); // Apply security headers
+app.use(httpsRedirect); // Redirect HTTP → HTTPS when enabled
+app.use(cors(corsOptions)); // Apply CORS restrictions
+app.use(express.json()); // JSON body parsing
+app.use(cookieParser()); // Cookie parsing
 
 // -----------------------------------------------------------------------------
 // Health Check
@@ -49,7 +49,7 @@ app.get("/api/health", (req, res) => {
 });
 
 // -----------------------------------------------------------------------------
-// API Routes (ONLY the ones that exist)
+// API Routes
 // -----------------------------------------------------------------------------
 app.use("/api/auth", authRoutes);
 app.use("/api/profile", profileRoutes);
@@ -66,13 +66,13 @@ app.use("/api/assignments-allocations", assignmentRoutes);
 // 404 Handler
 // -----------------------------------------------------------------------------
 app.use((req, res) => {
-  res.status(404).json({ error: "Route not found" });
+  res.status(404).json({ error: "Route not found" }); // Consistent JSON 404
 });
 
 // -----------------------------------------------------------------------------
 // Global Error Handler
 // -----------------------------------------------------------------------------
-app.use(errorHandler);
+app.use(errorHandler); // Final middleware for catching thrown errors
 
 // -----------------------------------------------------------------------------
 // Start Server After DB Connects
@@ -85,5 +85,5 @@ connectDB()
   })
   .catch((err) => {
     console.error("❌ Failed to start server:", err);
-    process.exit(1);
+    process.exit(1); // Fail fast if DB connection fails
   });

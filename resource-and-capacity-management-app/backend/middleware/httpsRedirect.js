@@ -1,3 +1,4 @@
+// Redirect HTTP to HTTPS in production
 export default function httpsRedirect(req, res, next) {
   const isProduction = process.env.NODE_ENV === "production";
   const forwardedProto = req.headers["x-forwarded-proto"];

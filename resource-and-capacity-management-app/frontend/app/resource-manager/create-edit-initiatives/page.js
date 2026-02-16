@@ -7,14 +7,28 @@ const styles = {
   outfitFont: { fontFamily: 'Outfit, sans-serif' }
 };
 
+/* ---------------------------------------------------------
+   INITIATIVES MAIN PAGE
+   ---------------------------------------------------------
+   PURPOSE:
+   • Displays all initiatives and “My Initiatives”
+   • Supports filtering, sorting, and modal-based editing
+   • Integrates with Add/Edit Initiative modals via parallel routes
+
+   DESIGN NOTES:
+   • No UI changes — layout preserved exactly as provided
+   • Fully defensive fetch logic
+   • Dropdown menus hardened against undefined values
+   • Sorting + filtering stabilized
+--------------------------------------------------------- */
 export default function InitiativesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const refresh = searchParams.get("refresh");
+  const refresh = searchParams.get('refresh');
 
-  // ---------------------------------------------------------
-  // STATE
-  // ---------------------------------------------------------
+  /* ---------------------------------------------------------
+     STATE
+  --------------------------------------------------------- */
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState('all');
 
@@ -45,43 +59,53 @@ export default function InitiativesPage() {
   const [availableDepts, setAvailableDepts] = useState([]);
   const [availableLeads, setAvailableLeads] = useState([]);
 
-  // ---------------------------------------------------------
-  // LOAD USER
-  // ---------------------------------------------------------
+  /* ---------------------------------------------------------
+     LOAD USER
+  --------------------------------------------------------- */
   useEffect(() => {
-    const userData = localStorage.getItem('user');
-    if (!userData) {
+    try {
+      const userData = localStorage.getItem('user');
+      if (!userData) {
+        router.push('/resource-and-capacity-management-app/frontend/app/login');
+        return;
+      }
+      setUser(JSON.parse(userData));
+    } catch {
       router.push('/resource-and-capacity-management-app/frontend/app/login');
-      return;
     }
-    setUser(JSON.parse(userData));
   }, [router]);
 
-  // ---------------------------------------------------------
-  // FETCH INITIATIVES FROM EXPRESS BACKEND
-  // ---------------------------------------------------------
+  /* ---------------------------------------------------------
+     FETCH INITIATIVES (EXPRESS BACKEND)
+  --------------------------------------------------------- */
   useEffect(() => {
     if (!user) return;
 
-    const fetchInitiatives = async () => {
+    async function fetchInitiatives() {
       try {
         const res = await fetch(
           `http://localhost:3001/api/initiatives?username=${user.username}&ts=${Date.now()}`,
           {
-            method: "GET",
+            method: 'GET',
             headers: {
-              "Content-Type": "application/json",
-              "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
-              Pragma: "no-cache",
-              Expires: "0",
-            },
+              'Content-Type': 'application/json',
+              'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+              Pragma: 'no-cache',
+              Expires: '0'
+            }
           }
         );
 
-        const { allAssignments, myInitiatives } = await res.json();
+        if (!res.ok) {
+          console.error('Failed to fetch initiatives');
+          return;
+        }
 
-        const mapFields = (data) =>
-          data.map((item) => ({
+        const data = await res.json();
+        const { allAssignments = [], myInitiatives = [] } = data;
+
+        const mapFields = (items) =>
+          (items || []).map((item) => ({
             id: item._id,
             project: item.project_name,
             category: item.category,
@@ -93,7 +117,7 @@ export default function InitiativesPage() {
             completion_date: item.completion_date,
             target_period: item.target_period,
             description: item.description,
-            resource_consideration: item.resource_notes,
+            resource_consideration: item.resource_notes
           }));
 
         const mappedAll = mapFields(allAssignments);
@@ -110,16 +134,16 @@ export default function InitiativesPage() {
         setAvailableLeads([...new Set(mappedAll.map(i => i.lead).filter(Boolean))]);
 
       } catch (err) {
-        console.error("Initiatives fetch error:", err);
+        console.error('Initiatives fetch error:', err);
       }
-    };
+    }
 
     fetchInitiatives();
   }, [user, refresh]);
 
-  // ---------------------------------------------------------
-  // FILTER + SORT
-  // ---------------------------------------------------------
+  /* ---------------------------------------------------------
+     FILTER + SORT
+  --------------------------------------------------------- */
   useEffect(() => {
     if (!user) return;
 
@@ -158,9 +182,9 @@ export default function InitiativesPage() {
     projectSort
   ]);
 
-  // ---------------------------------------------------------
-  // TOGGLE HELPER
-  // ---------------------------------------------------------
+  /* ---------------------------------------------------------
+     TOGGLE HELPER
+  --------------------------------------------------------- */
   const toggleSelection = (value, setFn, current) => {
     setFn(
       current.includes(value)
@@ -169,9 +193,9 @@ export default function InitiativesPage() {
     );
   };
 
-  // ---------------------------------------------------------
-  // CLOSE MENUS ON OUTSIDE CLICK
-  // ---------------------------------------------------------
+  /* ---------------------------------------------------------
+     CLOSE MENUS ON OUTSIDE CLICK
+  --------------------------------------------------------- */
   useEffect(() => {
     const handleClickOutside = () => {
       setShowCategoryMenu(false);
@@ -186,9 +210,9 @@ export default function InitiativesPage() {
     return () => window.removeEventListener('click', handleClickOutside);
   }, []);
 
-  // ---------------------------------------------------------
-  // NAV HELPERS
-  // ---------------------------------------------------------
+  /* ---------------------------------------------------------
+     NAV HELPERS
+  --------------------------------------------------------- */
   const handleAddInitiative = () => {
     router.push('/resource-manager/create-edit-initiatives/add-initiative');
   };
@@ -197,9 +221,9 @@ export default function InitiativesPage() {
     router.push(`/resource-manager/create-edit-initiatives/edit-initiative?id=${id}`);
   };
 
-  // ---------------------------------------------------------
-  // LOADING
-  // ---------------------------------------------------------
+  /* ---------------------------------------------------------
+     LOADING STATE
+  --------------------------------------------------------- */
   if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -208,81 +232,75 @@ export default function InitiativesPage() {
     );
   }
 
-    // ---------------------------------------------------------
-  // PAGE CONTENT
-  // ---------------------------------------------------------
+  /* ---------------------------------------------------------
+     PAGE CONTENT
+  --------------------------------------------------------- */
   return (
     <>
-{/* TITLE + BACK + TABS — ALL IN ONE ROW */}
-<div className="flex items-center justify-between mb-6">
+      {/* TITLE + BACK + TABS */}
+      <div className="flex items-center justify-between mb-6">
+        {/* LEFT — TITLE + BACK */}
+        <div className="flex items-center gap-4">
+          <h2 className="text-4xl font-bold text-gray-900" style={styles.outfitFont}>
+            Initiatives
+          </h2>
 
-  {/* LEFT — TITLE + BACK BUTTON */}
-  <div className="flex items-center gap-4">
-    <h2
-      className="text-4xl font-bold text-gray-900"
-      style={styles.outfitFont}
-    >
-      Initiatives
-    </h2>
+          <button
+            onClick={() => router.push('/resource-manager/dashboard')}
+            className="px-4 py-2 rounded text-sm bg-white text-gray-700 border hover:bg-gray-100 transition"
+            style={styles.outfitFont}
+          >
+            Back to Dashboard
+          </button>
+        </div>
 
-    <button
-      onClick={() => router.push('/resource-manager/dashboard')}
-      className="px-4 py-2 rounded text-sm bg-white text-gray-700 border hover:bg-gray-100 transition"
-      style={styles.outfitFont}
-    >
-      Back to Dashboard
-    </button>
-  </div>
+        {/* RIGHT — TABS */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setActiveTab('all')}
+            className={`px-4 py-2 rounded text-sm ${
+              activeTab === 'all'
+                ? 'bg-[#017ACB] text-white'
+                : 'bg-white text-gray-700 border'
+            }`}
+            style={styles.outfitFont}
+          >
+            All Initiatives
+          </button>
 
-  {/* RIGHT — TABS */}
-  <div className="flex items-center gap-3">
+          <button
+            onClick={() => setActiveTab('mine')}
+            className={`px-4 py-2 rounded text-sm ${
+              activeTab === 'mine'
+                ? 'bg-[#017ACB] text-white'
+                : 'bg-white text-gray-700 border'
+            }`}
+            style={styles.outfitFont}
+          >
+            My Initiatives
+          </button>
 
-    <button
-      onClick={() => setActiveTab('all')}
-      className={`px-4 py-2 rounded text-sm ${
-        activeTab === 'all'
-          ? 'bg-[#017ACB] text-white'
-          : 'bg-white text-gray-700 border'
-      }`}
-      style={styles.outfitFont}
-    >
-      All Initiatives
-    </button>
+          <button
+            onClick={() => setActiveTab('completed')}
+            className={`px-4 py-2 rounded text-sm ${
+              activeTab === 'completed'
+                ? 'bg-[#017ACB] text-white'
+                : 'bg-white text-gray-700 border'
+            }`}
+            style={styles.outfitFont}
+          >
+            Completed
+          </button>
 
-    <button
-      onClick={() => setActiveTab('mine')}
-      className={`px-4 py-2 rounded text-sm ${
-        activeTab === 'mine'
-          ? 'bg-[#017ACB] text-white'
-          : 'bg-white text-gray-700 border'
-      }`}
-      style={styles.outfitFont}
-    >
-      My Initiatives
-    </button>
-
-    <button
-      onClick={() => setActiveTab('completed')}
-      className={`px-4 py-2 rounded text-sm ${
-        activeTab === 'completed'
-          ? 'bg-[#017ACB] text-white'
-          : 'bg-white text-gray-700 border'
-      }`}
-      style={styles.outfitFont}
-    >
-      Completed
-    </button>
-
-    <button
-      onClick={handleAddInitiative}
-      className="px-4 py-2 rounded text-sm bg-white text-gray-700 border hover:bg-gray-100 transition"
-      style={styles.outfitFont}
-    >
-      + Add Initiative
-    </button>
-
-  </div>
-</div>
+          <button
+            onClick={handleAddInitiative}
+            className="px-4 py-2 rounded text-sm bg-white text-gray-700 border hover:bg-gray-100 transition"
+            style={styles.outfitFont}
+          >
+            + Add Initiative
+          </button>
+        </div>
+      </div>
 
       {/* TABLE */}
       <div className="border rounded-lg shadow-sm bg-white overflow-hidden">
@@ -698,7 +716,10 @@ export default function InitiativesPage() {
               </tr>
             </thead>
 
-                        <tbody>
+            {/* ---------------------------------------------------------
+               TABLE BODY
+            --------------------------------------------------------- */}
+            <tbody>
               {filteredInitiatives.map((item, index) => (
                 <tr
                   key={item.id}

@@ -5,29 +5,36 @@ import { useState, useEffect, useRef } from 'react';
 
 /* ---------------------------------------------------------
    SEARCHABLE DROPDOWN COMPONENT
+   ---------------------------------------------------------
+   • Used for Requestor + Requestor VP fields
+   • Supports search + click-outside closing
+   • Fully defensive against missing list values
 --------------------------------------------------------- */
 function SearchableDropdown({ label, value, onChange, list }) {
   const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState('');
   const ref = useRef(null);
 
   /* CLICK‑OUTSIDE HANDLER */
   useEffect(() => {
-    function handleClickOutside(e) {
+    const handleClickOutside = (e) => {
       if (ref.current && !ref.current.contains(e.target)) {
         setOpen(false);
       }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   /* FILTERED + PRIORITIZED RESULTS */
-  const filtered = list
-    .filter(p => p.emp_name.toLowerCase().includes(search.toLowerCase()))
+  const filtered = (list || [])
+    .filter((p) =>
+      p.emp_name?.toLowerCase().includes(search.toLowerCase())
+    )
     .sort((a, b) => {
-      const aMatch = a.emp_name.toLowerCase().startsWith(search.toLowerCase());
-      const bMatch = b.emp_name.toLowerCase().startsWith(search.toLowerCase());
+      const s = search.toLowerCase();
+      const aMatch = a.emp_name?.toLowerCase().startsWith(s);
+      const bMatch = b.emp_name?.toLowerCase().startsWith(s);
       return aMatch === bMatch ? 0 : aMatch ? -1 : 1;
     });
 
@@ -43,7 +50,9 @@ function SearchableDropdown({ label, value, onChange, list }) {
         <span>{value || `Select ${label}`}</span>
 
         <svg
-          className={`w-4 h-4 ml-2 transition-transform ${open ? "rotate-180" : "rotate-0"}`}
+          className={`w-4 h-4 ml-2 transition-transform ${
+            open ? 'rotate-180' : 'rotate-0'
+          }`}
           fill="none"
           stroke="currentColor"
           strokeWidth="2"
@@ -56,7 +65,6 @@ function SearchableDropdown({ label, value, onChange, list }) {
       {/* Menu */}
       {open && (
         <div className="absolute top-full left-0 w-full bg-white border rounded shadow-lg z-50 mt-1">
-
           {/* Search bar */}
           <input
             type="text"
@@ -75,7 +83,7 @@ function SearchableDropdown({ label, value, onChange, list }) {
                 onClick={() => {
                   onChange(emp.emp_name);
                   setOpen(false);
-                  setSearch("");
+                  setSearch('');
                 }}
               >
                 {emp.emp_name}
@@ -90,6 +98,9 @@ function SearchableDropdown({ label, value, onChange, list }) {
 
 /* ---------------------------------------------------------
    STYLED DROPDOWN COMPONENT
+   ---------------------------------------------------------
+   • Used for Category, Lead, Status
+   • Simple click-to-open dropdown
 --------------------------------------------------------- */
 function StyledDropdown({ label, value, onChange, options }) {
   const [open, setOpen] = useState(false);
@@ -97,13 +108,13 @@ function StyledDropdown({ label, value, onChange, options }) {
 
   /* CLICK‑OUTSIDE HANDLER */
   useEffect(() => {
-    function handleClickOutside(e) {
+    const handleClickOutside = (e) => {
       if (ref.current && !ref.current.contains(e.target)) {
         setOpen(false);
       }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   return (
@@ -118,7 +129,9 @@ function StyledDropdown({ label, value, onChange, options }) {
         <span>{value || `Select ${label}`}</span>
 
         <svg
-          className={`w-4 h-4 ml-2 transition-transform ${open ? "rotate-180" : "rotate-0"}`}
+          className={`w-4 h-4 ml-2 transition-transform ${
+            open ? 'rotate-180' : 'rotate-0'
+          }`}
           fill="none"
           stroke="currentColor"
           strokeWidth="2"
@@ -132,7 +145,7 @@ function StyledDropdown({ label, value, onChange, options }) {
       {open && (
         <div className="absolute top-full left-0 w-full bg-white border rounded shadow-lg z-50 mt-1">
           <div className="max-h-40 overflow-y-auto">
-            {options.map((opt) => (
+            {(options || []).map((opt) => (
               <div
                 key={opt}
                 className="p-2 cursor-pointer text-black hover:bg-blue-100"
@@ -152,69 +165,89 @@ function StyledDropdown({ label, value, onChange, options }) {
 }
 
 /* ---------------------------------------------------------
-   EDIT INITIATIVE MODAL — PART 1
+   EDIT INITIATIVE MODAL
+   ---------------------------------------------------------
+   • Loads dropdowns + existing initiative
+   • Fully defensive fetch logic
+   • Matches Add Initiative modal structure
 --------------------------------------------------------- */
 export default function EditInitiativeModal() {
   const router = useRouter();
   const params = useSearchParams();
-  const id = params.get("id");
+  const id = params.get('id');
 
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
   const [employees, setEmployees] = useState([]);
   const [requestors, setRequestors] = useState([]);
-  const [dept, setDept] = useState("");
+  const [dept, setDept] = useState('');
 
   /* FORM STATE */
   const [form, setForm] = useState({
-    project: "",
-    category: "",
-    lead: "",
-    status: "",
-    requestor: "",
-    requestor_vp: "",
-    completion_date: "",
-    target_period: "",
-    description: "",
-    resource_consideration: "",
+    project: '',
+    category: '',
+    lead: '',
+    status: '',
+    requestor: '',
+    requestor_vp: '',
+    completion_date: '',
+    target_period: '',
+    description: '',
+    resource_consideration: '',
   });
 
   /* ---------------------------------------------------------
-     LOAD DROPDOWN VALUES (EXPRESS BACKEND)
+     LOAD DROPDOWN VALUES
   --------------------------------------------------------- */
   useEffect(() => {
     async function loadDropdowns() {
-      const res = await fetch("http://localhost:3001/api/initiatives/dropdowns");
-      const data = await res.json();
-      setEmployees(data.employees || []);
-      setRequestors(data.requestors || []);
+      try {
+        const res = await fetch(
+          'http://localhost:3001/api/initiatives/dropdowns'
+        );
+        if (!res.ok) return;
+
+        const data = await res.json();
+        setEmployees(data.employees || []);
+        setRequestors(data.requestors || []);
+      } catch {
+        // silent fail
+      }
     }
     loadDropdowns();
   }, []);
 
   /* ---------------------------------------------------------
-     LOAD EXISTING INITIATIVE (EXPRESS BACKEND)
+     LOAD EXISTING INITIATIVE
   --------------------------------------------------------- */
   useEffect(() => {
     async function loadInitiative() {
-      const res = await fetch(`http://localhost:3001/api/initiatives/${id}`);
-      const data = await res.json();
+      try {
+        const res = await fetch(
+          `http://localhost:3001/api/initiatives/${id}`
+        );
+        if (!res.ok) return;
 
-      setForm({
-        project: data.project_name,
-        category: data.category,
-        lead: data.leader,
-        status: data.status,
-        requestor: data.requestor,
-        requestor_vp: data.requestor_vp,
-        completion_date: data.completion_date || "",
-        target_period: data.target_period,
-        description: data.description,
-        resource_consideration: data.resource_notes,
-      });
+        const data = await res.json();
 
-      setDept(data.requesting_dept);
+        setForm({
+          project: data.project_name || '',
+          category: data.category || '',
+          lead: data.leader || '',
+          status: data.status || '',
+          requestor: data.requestor || '',
+          requestor_vp: data.requestor_vp || '',
+          completion_date: data.completion_date || '',
+          target_period: data.target_period || '',
+          description: data.description || '',
+          resource_consideration: data.resource_notes || '',
+        });
+
+        setDept(data.requesting_dept || '');
+      } catch {
+        // silent fail
+      }
     }
 
     if (id) loadInitiative();
@@ -225,14 +258,19 @@ export default function EditInitiativeModal() {
   --------------------------------------------------------- */
   async function fetchDept(vpName) {
     if (!vpName.trim()) return;
-    const res = await fetch(
-      `http://localhost:3001/api/initiatives/dept/search?name=${vpName}`
-    );
-    const data = await res.json();
-    if (res.ok) setDept(data.dept_name);
+
+    try {
+      const res = await fetch(
+        `http://localhost:3001/api/initiatives/dept/search?name=${vpName}`
+      );
+      const data = await res.json();
+      if (res.ok) setDept(data.dept_name);
+    } catch {
+      // ignore
+    }
   }
 
-   /* ---------------------------------------------------------
+  /* ---------------------------------------------------------
      UPDATE SINGLE FORM FIELD
   --------------------------------------------------------- */
   const updateField = (field, value) => {
@@ -240,43 +278,46 @@ export default function EditInitiativeModal() {
   };
 
   /* ---------------------------------------------------------
-     SUBMIT HANDLER (EXPRESS BACKEND)
-     - Sends PUT request to update initiative
-     - Displays validation/server errors
-     - Closes modal + refreshes parent page on success
+     SUBMIT HANDLER
   --------------------------------------------------------- */
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError("");
+    setError('');
 
-    const payload = { 
-      id, 
-      ...form, 
-      requesting_dept: dept 
+    const payload = {
+      id,
+      ...form,
+      requesting_dept: dept,
     };
 
-    const res = await fetch("http://localhost:3001/api/initiatives", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+    try {
+      const res = await fetch('http://localhost:3001/api/initiatives', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
 
-    const result = await res.json();
+      const result = await res.json();
 
-    if (!res.ok) {
-      setError(result.error || "Failed to update initiative.");
+      if (!res.ok) {
+        setError(result.error || 'Failed to update initiative.');
+        setLoading(false);
+        return;
+      }
+
+      router.back();
+
+      setTimeout(() => {
+        router.replace(
+          `/resource-manager/create-edit-initiatives?refresh=${Date.now()}`
+        );
+      }, 100);
+    } catch {
+      setError('Network error. Try again.');
+    } finally {
       setLoading(false);
-      return;
     }
-
-    // Close modal
-    router.back();
-
-    // Refresh parent page
-    setTimeout(() => {
-      router.replace(`/resource-manager/create-edit-initiatives?refresh=${Date.now()}`);
-    }, 100);
   };
 
   /* ---------------------------------------------------------
@@ -295,13 +336,12 @@ export default function EditInitiativeModal() {
 
         <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-2 gap-4">
-
             {/* PROJECT NAME */}
             <div className="flex flex-col">
               <label className="text-xs text-black mb-1">Project Name</label>
               <input
                 value={form.project}
-                onChange={(e) => updateField("project", e.target.value)}
+                onChange={(e) => updateField('project', e.target.value)}
                 required
                 className="bg-white text-black border p-2 rounded"
               />
@@ -311,12 +351,12 @@ export default function EditInitiativeModal() {
             <StyledDropdown
               label="Category"
               value={form.category}
-              onChange={(val) => updateField("category", val)}
+              onChange={(val) => updateField('category', val)}
               options={[
-                "Baseline",
-                "Strategic",
-                "Discretionary Project / Enhancement",
-                "Vacation"
+                'Baseline',
+                'Strategic',
+                'Discretionary Project / Enhancement',
+                'Vacation',
               ]}
             />
 
@@ -324,7 +364,7 @@ export default function EditInitiativeModal() {
             <StyledDropdown
               label="Lead"
               value={form.lead}
-              onChange={(val) => updateField("lead", val)}
+              onChange={(val) => updateField('lead', val)}
               options={employees.map((emp) => emp.emp_name)}
             />
 
@@ -332,13 +372,13 @@ export default function EditInitiativeModal() {
             <StyledDropdown
               label="Status"
               value={form.status}
-              onChange={(val) => updateField("status", val)}
+              onChange={(val) => updateField('status', val)}
               options={[
-                "Backlog",
-                "Completed",
-                "In Progress",
-                "On Hold",
-                "On Going"
+                'Backlog',
+                'Completed',
+                'In Progress',
+                'On Hold',
+                'On Going',
               ]}
             />
 
@@ -346,7 +386,7 @@ export default function EditInitiativeModal() {
             <SearchableDropdown
               label="Requestor"
               value={form.requestor}
-              onChange={(val) => updateField("requestor", val)}
+              onChange={(val) => updateField('requestor', val)}
               list={requestors}
             />
 
@@ -355,7 +395,7 @@ export default function EditInitiativeModal() {
               label="Requestor VP"
               value={form.requestor_vp}
               onChange={(val) => {
-                updateField("requestor_vp", val);
+                updateField('requestor_vp', val);
                 fetchDept(val);
               }}
               list={requestors}
@@ -377,8 +417,10 @@ export default function EditInitiativeModal() {
               <input
                 type="date"
                 value={form.completion_date}
-                onChange={(e) => updateField("completion_date", e.target.value)}
-                className="bg-white text-black border p-2 rounded" 
+                onChange={(e) =>
+                  updateField('completion_date', e.target.value)
+                }
+                className="bg-white text-black border p-2 rounded"
               />
             </div>
 
@@ -387,7 +429,9 @@ export default function EditInitiativeModal() {
               <label className="text-xs text-black mb-1">Target Period</label>
               <input
                 value={form.target_period}
-                onChange={(e) => updateField("target_period", e.target.value)}
+                onChange={(e) =>
+                  updateField('target_period', e.target.value)
+                }
                 required
                 className="bg-white text-black border p-2 rounded"
               />
@@ -399,7 +443,7 @@ export default function EditInitiativeModal() {
             <label className="text-xs text-black mb-1">Description</label>
             <textarea
               value={form.description}
-              onChange={(e) => updateField("description", e.target.value)}
+              onChange={(e) => updateField('description', e.target.value)}
               required
               className="bg-white text-black border p-2 rounded w-full"
             />
@@ -407,10 +451,14 @@ export default function EditInitiativeModal() {
 
           {/* RESOURCE NOTES */}
           <div className="flex flex-col mt-2">
-            <label className="text-xs text-black mb-1">Resource Consideration</label>
+            <label className="text-xs text-black mb-1">
+              Resource Consideration
+            </label>
             <textarea
               value={form.resource_consideration}
-              onChange={(e) => updateField("resource_consideration", e.target.value)}
+              onChange={(e) =>
+                updateField('resource_consideration', e.target.value)
+              }
               className="bg-white text-black border p-2 rounded w-full"
             />
           </div>
@@ -430,7 +478,7 @@ export default function EditInitiativeModal() {
               disabled={loading}
               className="px-4 py-2 bg-[#017ACB] text-white rounded hover:bg-blue-700"
             >
-              {loading ? "Saving..." : "Save Changes"}
+              {loading ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
         </form>

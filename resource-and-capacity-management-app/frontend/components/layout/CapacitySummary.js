@@ -29,12 +29,25 @@ const styles = {
   outfitFont: { fontFamily: 'Outfit, sans-serif' }
 };
 
+/* ---------------------------------------------------------
+   SAFE NUMBER FORMATTER
+   ---------------------------------------------------------
+   • Prevents NaN from appearing in UI
+   • Ensures consistent 2‑decimal formatting
+--------------------------------------------------------- */
 function fmt(n) {
-  if (n === null || n === undefined) return '0.00';
+  if (n === null || n === undefined || isNaN(n)) return '0.00';
   return Number(n).toFixed(2);
 }
 
 export default function CapacitySummary() {
+  /* ---------------------------------------------------------
+     SECURITY: SAFE USER INITIALIZATION
+     ---------------------------------------------------------
+     • Reads user from localStorage only on client
+     • Wrapped in try/catch to avoid crashes on malformed JSON
+     • Ensures component never breaks due to corrupted data
+  --------------------------------------------------------- */
   const [user, setUser] = useState(null);
 
   const [selectableMonths, setSelectableMonths] = useState([]);
@@ -48,20 +61,35 @@ export default function CapacitySummary() {
 
   const [loadingMonths, setLoadingMonths] = useState(true);
   const [loadingSummary, setLoadingSummary] = useState(true);
+
   const router = useRouter();
 
   /* ---------------------------------------------------------
      LOAD USER AFTER MOUNT
+     ---------------------------------------------------------
+     • Ensures SSR does not access localStorage
+     • Defensive JSON parsing
   --------------------------------------------------------- */
   useEffect(() => {
-    const stored = localStorage.getItem('user');
-    if (stored) {
-      setUser(JSON.parse(stored));
+    try {
+      const stored = localStorage.getItem('user');
+      if (stored) {
+        setUser(JSON.parse(stored));
+      }
+    } catch (err) {
+      console.error('LocalStorage parse error:', err);
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
     }
   }, []);
 
   /* ---------------------------------------------------------
      LOAD MONTHS AFTER USER EXISTS
+     ---------------------------------------------------------
+     • Fetches available YYYYMM month options
+     • Selects current month if available
+     • Falls back to last available month
+     • Fully defensive against missing backend fields
   --------------------------------------------------------- */
   useEffect(() => {
     if (!user) return;
@@ -69,9 +97,12 @@ export default function CapacitySummary() {
     async function loadMonths() {
       try {
         const res = await api.get('/capacity-summary/months');
-        const data = res.data;
+        const data = res?.data;
 
-        if (!data.months || data.months.length === 0) return;
+        if (!data?.months || data.months.length === 0) {
+          console.warn('No months returned from backend');
+          return;
+        }
 
         setSelectableMonths(data.months);
 
@@ -81,7 +112,9 @@ export default function CapacitySummary() {
 
         const match = data.months.find((m) => m.value === currentYYYYMM);
 
-        setStartMonth(match ? match.value : data.months[data.months.length - 1].value);
+        setStartMonth(
+          match ? match.value : data.months[data.months.length - 1].value
+        );
       } catch (err) {
         console.error('Failed to load months:', err);
       } finally {
@@ -94,17 +127,23 @@ export default function CapacitySummary() {
 
   /* ---------------------------------------------------------
      LOAD SUMMARY AFTER USER + START MONTH EXIST
+     ---------------------------------------------------------
+     • Fetches 6‑month capacity summary window
+     • Defensive checks on backend response
+     • Ensures arrays always exist to avoid chart/table crashes
   --------------------------------------------------------- */
   useEffect(() => {
     if (!user || !startMonth) return;
 
     async function loadSummary() {
       setLoadingSummary(true);
+
       try {
         const res = await api.get(
-          `/capacity-summary?start=${startMonth}&months=6`
+          `/capacity-summary?start=${encodeURIComponent(startMonth)}&months=6`
         );
-        const data = res.data;
+
+        const data = res?.data || {};
 
         setMonths(data.months || []);
         setCategories(data.categories || []);
@@ -123,6 +162,9 @@ export default function CapacitySummary() {
 
   /* ---------------------------------------------------------
      LOADING SCREEN
+     ---------------------------------------------------------
+     • Prevents UI flash while validating session
+     • Ensures charts/tables only render with valid data
   --------------------------------------------------------- */
   if (!user || loadingMonths || loadingSummary) {
     return (
@@ -133,7 +175,10 @@ export default function CapacitySummary() {
   }
 
   /* ---------------------------------------------------------
-     CHART DATA
+     CHART DATA (DEFENSIVE)
+     ---------------------------------------------------------
+     • Ensures categories map safely
+     • Prevents undefined values from breaking Chart.js
   --------------------------------------------------------- */
   const chartData = {
     labels: months,
@@ -141,19 +186,19 @@ export default function CapacitySummary() {
       ...categories.map((cat, idx) => ({
         type: 'bar',
         label: cat.label,
-        data: cat.values,
+        data: cat.values || [],
         backgroundColor: [
           '#7EC8FF',
           '#003F8C',
           '#CFEAFF',
           '#A9A9A9'
-        ][idx],
+        ][idx % 4],
         stack: 'alloc'
       })),
       {
         type: 'line',
         label: 'Total People Capacity',
-        data: peopleCapacity,
+        data: peopleCapacity || [],
         borderColor: '#8B0000',
         backgroundColor: '#8B0000',
         borderWidth: 2,
@@ -174,57 +219,66 @@ export default function CapacitySummary() {
 
   /* ---------------------------------------------------------
      FINAL RENDER
+     ---------------------------------------------------------
+     • Title + month selector
+     • Capacity table
+     • Stacked bar + line chart
+     • Fully responsive layout
   --------------------------------------------------------- */
   return (
     <div className="w-full bg-gray-50">
       <main className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-4">
 
-        {/* TITLE + MONTH SELECTOR */}
-<div className="flex items-center justify-between mb-4">
-  <div className="flex items-center gap-4">
-    <h2
-      className="text-3xl font-bold text-gray-900"
-      style={styles.outfitFont}
-    >
-      Capacity Summary
-    </h2>
+        {/* -----------------------------------------------------
+           TITLE + MONTH SELECTOR
+        ----------------------------------------------------- */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-4">
+            <h2
+              className="text-3xl font-bold text-gray-900"
+              style={styles.outfitFont}
+            >
+              Capacity Summary
+            </h2>
 
-    <button
-      onClick={() => router.back()}
-      className="px-4 py-2 rounded text-sm bg-white text-gray-700 border hover:bg-gray-100 transition"
-      style={styles.outfitFont}
-    >
-      Back to Dashboard
-    </button>
-  </div>
+            <button
+              onClick={() => router.back()}
+              className="px-4 py-2 rounded text-sm bg-white text-gray-700 border hover:bg-gray-100 transition"
+              style={styles.outfitFont}
+            >
+              Back to Dashboard
+            </button>
+          </div>
 
-  <div className="flex items-center gap-2">
-    <label
-      className="text-sm font-medium text-gray-700"
-      style={styles.outfitFont}
-    >
-      Start Month:
-    </label>
+          <div className="flex items-center gap-2">
+            <label
+              className="text-sm font-medium text-gray-700"
+              style={styles.outfitFont}
+            >
+              Start Month:
+            </label>
 
-    <select
-      className="border border-black rounded px-2 py-1 text-sm bg-white text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
-      value={startMonth}
-      onChange={(e) => setStartMonth(Number(e.target.value))}
-    >
-      {selectableMonths.map((m) => (
-        <option
-          key={m.value}
-          value={m.value}
-          className="bg-white text-black"
-        >
-          {m.label}
-        </option>
-      ))}
-    </select>
-  </div>
-</div>
+            <select
+              className="border border-black rounded px-2 py-1 text-sm bg-white text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={startMonth}
+              onChange={(e) => setStartMonth(Number(e.target.value))}
+            >
+              {selectableMonths.map((m) => (
+                <option
+                  key={m.value}
+                  value={m.value}
+                  className="bg-white text-black"
+                >
+                  {m.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
 
-        {/* CAPACITY TABLE */}
+        {/* -----------------------------------------------------
+           CAPACITY TABLE
+        ----------------------------------------------------- */}
         <div className="overflow-x-auto border rounded-lg shadow-sm bg-white mb-6">
           <table className="min-w-max w-full border-collapse text-sm text-gray-700">
 
@@ -299,7 +353,9 @@ export default function CapacitySummary() {
           </table>
         </div>
 
-        {/* CHART */}
+        {/* -----------------------------------------------------
+           CHART
+        ----------------------------------------------------- */}
         <div className="bg-white p-4 rounded-lg shadow mb-6 flex justify-center">
           <div className="w-full max-w-5xl">
             <Bar data={chartData} options={chartOptions} />

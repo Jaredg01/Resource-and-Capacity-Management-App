@@ -1,8 +1,6 @@
+// Get capacity summary data
 import { connectDB } from "../config/db.js";
 
-/* ---------------------------------------------------------
-   Convert YYYYMM → "Sep-25"
---------------------------------------------------------- */
 function formatMonthLabel(yyyymm) {
   const s = String(yyyymm);
   const year = Number(s.slice(0, 4));
@@ -15,9 +13,6 @@ function formatMonthLabel(yyyymm) {
   return `${shortMonth}-${shortYear}`;
 }
 
-/* ---------------------------------------------------------
-   Compute rolling window of months
---------------------------------------------------------- */
 function computeMonthWindow(startYYYYMM, count) {
   const months = [];
   let year = Math.floor(startYYYYMM / 100);
@@ -36,9 +31,6 @@ function computeMonthWindow(startYYYYMM, count) {
   return months;
 }
 
-/* ---------------------------------------------------------
-   GET /api/capacity-summary
---------------------------------------------------------- */
 export const getCapacitySummary = async (req, res) => {
   try {
     const db = await connectDB();
@@ -52,9 +44,7 @@ export const getCapacitySummary = async (req, res) => {
     const allocationCol = db.collection("allocation");
     const capacityCol = db.collection("capacity");
 
-    /* ---------------------------------------------------------
-       AUTO-DETECT START MONTH
-    --------------------------------------------------------- */
+    // Detect start month
     let start = startMonth;
 
     if (!start) {
@@ -74,17 +64,15 @@ export const getCapacitySummary = async (req, res) => {
 
     const targetMonths = computeMonthWindow(start, monthsWindow);
 
-    /* ---------------------------------------------------------
-       1) AGGREGATE ALLOCATIONS BY CATEGORY + MONTH
-    --------------------------------------------------------- */
+    // Aggregate allocations by category and month
     const allocationAgg = await allocationCol
       .aggregate([
         { $match: { date: { $in: targetMonths } } },
         {
           $group: {
             _id: { category: "$category", date: "$date" },
-            total: { $sum: "$amount" },
-          },
+            total: { $sum: "$amount" }
+          }
         },
         {
           $group: {
@@ -92,26 +80,24 @@ export const getCapacitySummary = async (req, res) => {
             categories: {
               $push: {
                 category: "$_id.category",
-                total: "$total",
-              },
-            },
-          },
-        },
+                total: "$total"
+              }
+            }
+          }
+        }
       ])
       .toArray();
 
-    /* ---------------------------------------------------------
-       2) AGGREGATE PEOPLE CAPACITY BY MONTH
-    --------------------------------------------------------- */
+    // Aggregate people capacity by month
     const capacityAgg = await capacityCol
       .aggregate([
         { $match: { date: { $in: targetMonths } } },
         {
           $group: {
             _id: "$date",
-            totalPeopleCapacity: { $sum: "$amount" },
-          },
-        },
+            totalPeopleCapacity: { $sum: "$amount" }
+          }
+        }
       ])
       .toArray();
 
@@ -120,9 +106,7 @@ export const getCapacitySummary = async (req, res) => {
       capacityMap.set(row._id, row.totalPeopleCapacity);
     }
 
-    /* ---------------------------------------------------------
-       3) MERGE ALLOCATION + CAPACITY RESULTS
-    --------------------------------------------------------- */
+    // Merge allocation and capacity results
     const merged = [];
 
     for (const month of targetMonths) {
@@ -132,7 +116,7 @@ export const getCapacitySummary = async (req, res) => {
         Vacation: 0,
         Baseline: 0,
         Strategic: 0,
-        "Discretionary Project": 0,
+        "Discretionary Project": 0
       };
 
       if (allocRow) {
@@ -163,13 +147,11 @@ export const getCapacitySummary = async (req, res) => {
         categories: catTotals,
         totalAllocated,
         totalPeopleCapacity,
-        remainingCapacity: totalPeopleCapacity - totalAllocated,
+        remainingCapacity: totalPeopleCapacity - totalAllocated
       });
     }
 
-    /* ---------------------------------------------------------
-       4) FORMAT RESPONSE
-    --------------------------------------------------------- */
+    // Format response
     return res.json({
       months: merged.map((m) => formatMonthLabel(m.date)),
       categories: [
@@ -178,17 +160,18 @@ export const getCapacitySummary = async (req, res) => {
         { label: "Strategic", values: merged.map((m) => m.categories.Strategic) },
         {
           label: "Discretionary Project",
-          values: merged.map((m) => m.categories["Discretionary Project"]),
-        },
+          values: merged.map((m) => m.categories["Discretionary Project"])
+        }
       ],
       totals: merged.map((m) => m.totalAllocated),
       peopleCapacity: merged.map((m) => m.totalPeopleCapacity),
-      remainingCapacity: merged.map((m) => m.remainingCapacity),
+      remainingCapacity: merged.map((m) => m.remainingCapacity)
     });
+
   } catch (err) {
     console.error("Error in capacity-summary:", err);
     return res.status(500).json({
-      error: "Failed to load capacity summary",
+      error: "Failed to load capacity summary"
     });
   }
 };

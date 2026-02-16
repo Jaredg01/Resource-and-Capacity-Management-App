@@ -7,54 +7,98 @@ import Image from 'next/image';
 import api from '@/lib/api';
 
 export default function ForgotPasswordPage() {
+  /* ---------------------------------------------------------
+     STATE MANAGEMENT
+     ---------------------------------------------------------
+     • username → controlled input
+     • submitted → toggles success state
+     • router → navigation back to login
+  --------------------------------------------------------- */
   const [username, setUsername] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const router = useRouter();
 
+  /* ---------------------------------------------------------
+     SECURITY: SUBMIT HANDLER
+     ---------------------------------------------------------
+     • Prevents default form submission
+     • Sends username securely to backend
+     • Defensive checks on backend response
+     • Shows safe, user-friendly error messages
+  --------------------------------------------------------- */
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     try {
-      const res = await api.post("/auth/forgot-password", { username });
+      const res = await api.post('/auth/forgot-password', { username });
 
-      if (!res.data.success) {
-        alert("Username not found. Please retype the correct username.");
+      if (!res?.data?.success) {
+        alert('Username not found. Please retype the correct username.');
         return;
       }
 
       setSubmitted(true);
-
     } catch (error) {
-      console.error("Password reset error:", error);
-      alert("Failed to send reset instructions. Please try again.");
+      console.error('Password reset error:', error);
+      alert('Failed to send reset instructions. Please try again.');
     }
   };
 
+  /* ---------------------------------------------------------
+     FINAL RENDER
+     ---------------------------------------------------------
+     • Full-screen modal overlay
+     • Prevents header flash by capturing background clicks
+     • Clean, centered card with before/after states
+  --------------------------------------------------------- */
   return (
     <div
-      className="fixed inset-0 bg-white/30 backdrop-blur-sm flex items-center justify-center z-50"
+      className="
+        fixed inset-0 bg-white/30 backdrop-blur-sm
+        flex items-center justify-center z-50
+      "
       onClick={() => router.push('/login')}
     >
       <div
-        className="bg-white rounded-xl shadow-xl border border-gray-200 p-8 m-4 w-full max-w-xl"
+        className="
+          bg-white rounded-xl shadow-xl border border-gray-200
+          p-8 m-4 w-full max-w-xl
+        "
         onClick={(e) => e.stopPropagation()}
       >
 
-        {/* Header */}
+        {/* -----------------------------------------------------
+           HEADER (LOGO + TITLE)
+        ----------------------------------------------------- */}
         <div className="flex justify-between items-center mb-8">
-          <Image src="/CapstoneDynamicsLogo.png" alt="Logo" width={96} height={96} className="h-24 shrink-0" />
+          <Image
+            src="/CapstoneDynamicsLogo.png"
+            alt="Logo"
+            width={96}
+            height={96}
+            className="h-24 shrink-0"
+          />
 
           <div className="flex flex-col items-center flex-1 mx-4">
-            <h3 className="text-2xl font-bold text-[#017ACB]" style={{ fontFamily: 'Outfit, sans-serif' }}>
+            <h3
+              className="text-2xl font-bold text-[#017ACB]"
+              style={{ fontFamily: 'Outfit, sans-serif' }}
+            >
               Capstone Dynamics
             </h3>
-            <h4 className="text-base font-semibold text-black mt-1" style={{ fontFamily: 'Outfit, sans-serif' }}>
+
+            <h4
+              className="text-base font-semibold text-black mt-1"
+              style={{ fontFamily: 'Outfit, sans-serif' }}
+            >
               Resource & Capacity Management
             </h4>
           </div>
         </div>
 
-        {/* BEFORE SUBMISSION */}
+        {/* -----------------------------------------------------
+           BEFORE SUBMISSION
+        ----------------------------------------------------- */}
         {!submitted ? (
           <>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">
@@ -67,6 +111,7 @@ export default function ForgotPasswordPage() {
 
             <form onSubmit={handleSubmit} className="space-y-6">
 
+              {/* USERNAME INPUT */}
               <div>
                 <label className="block text-base font-medium text-gray-700 mb-2">
                   Username
@@ -76,23 +121,33 @@ export default function ForgotPasswordPage() {
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="w-full px-5 py-3 border border-gray-300 rounded-lg text-gray-700 text-base focus:ring-2 focus:ring-blue-500"
+                  className="
+                    w-full px-5 py-3 border border-gray-300 rounded-lg
+                    text-gray-700 text-base focus:ring-2 focus:ring-blue-500
+                  "
                   placeholder="Enter your username"
                   required
                 />
               </div>
 
+              {/* ACTION BUTTONS */}
               <div className="flex gap-4">
                 <Link
                   href="/login"
-                  className="flex-1 px-5 py-3 text-center text-gray-700 border border-gray-500 rounded-lg hover:bg-gray-100 text-base"
+                  className="
+                    flex-1 px-5 py-3 text-center text-gray-700
+                    border border-gray-500 rounded-lg hover:bg-gray-100 text-base
+                  "
                 >
                   Back to Login
                 </Link>
 
                 <button
                   type="submit"
-                  className="flex-1 px-5 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-base"
+                  className="
+                    flex-1 px-5 py-3 bg-blue-600 text-white
+                    rounded-lg hover:bg-blue-700 text-base
+                  "
                 >
                   Send Reset Link
                 </button>
@@ -102,12 +157,24 @@ export default function ForgotPasswordPage() {
           </>
         ) : (
 
-          /* SUCCESS STATE */
+          /* ---------------------------------------------------
+             SUCCESS STATE
+          --------------------------------------------------- */
           <div className="text-center py-4">
 
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              <svg
+                className="w-8 h-8 text-green-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
               </svg>
             </div>
 
@@ -121,7 +188,10 @@ export default function ForgotPasswordPage() {
 
             <Link
               href="/login"
-              className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-base"
+              className="
+                inline-block px-6 py-3 bg-blue-600 text-white
+                rounded-lg hover:bg-blue-700 text-base
+              "
             >
               Back to Login
             </Link>

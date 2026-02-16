@@ -3,8 +3,9 @@ import { login, forgotPassword, resetPassword } from "../controllers/authControl
 
 const router = express.Router();
 
-router.post("/login", login);
-router.post("/forgot-password", forgotPassword);
-router.post("/reset-password", resetPassword);
+// Auth endpoints
+router.post("/login", login);                 // User login
+router.post("/forgot-password", forgotPassword); // Send reset link
+router.post("/reset-password", resetPassword);   // Apply new password
 
 export default router;

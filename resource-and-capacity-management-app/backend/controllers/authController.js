@@ -1,10 +1,8 @@
+// Handle login
 import { connectDB } from "../config/db.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
-/* ---------------------------------------------------------
-   LOGIN CONTROLLER
---------------------------------------------------------- */
 export const login = async (req, res) => {
   try {
     const db = await connectDB();
@@ -17,7 +15,6 @@ export const login = async (req, res) => {
       });
     }
 
-    // Correct query for your DB structure
     const user = await db.collection("account").findOne({
       "account.username": username.trim()
     });
@@ -29,7 +26,7 @@ export const login = async (req, res) => {
       });
     }
 
-    // Plain text password comparison
+    // Plain text comparison (matches your DB structure)
     if (password !== user.account.password) {
       return res.status(401).json({
         success: false,
@@ -37,7 +34,6 @@ export const login = async (req, res) => {
       });
     }
 
-    // Ensure JWT secret exists
     if (!process.env.JWT_SECRET) {
       console.error("JWT_SECRET is missing");
       return res.status(500).json({
@@ -76,9 +72,7 @@ export const login = async (req, res) => {
   }
 };
 
-/* ---------------------------------------------------------
-   FORGOT PASSWORD
---------------------------------------------------------- */
+// Handle forgot password
 export const forgotPassword = async (req, res) => {
   try {
     const db = await connectDB();
@@ -102,7 +96,6 @@ export const forgotPassword = async (req, res) => {
       });
     }
 
-    // Placeholder for future email reset logic
     return res.json({
       success: true,
       message: "Reset instructions sent"
@@ -117,9 +110,7 @@ export const forgotPassword = async (req, res) => {
   }
 };
 
-/* ---------------------------------------------------------
-   RESET PASSWORD (placeholder)
---------------------------------------------------------- */
+// Handle reset password (placeholder)
 export const resetPassword = async (req, res) => {
   return res.json({
     success: true,

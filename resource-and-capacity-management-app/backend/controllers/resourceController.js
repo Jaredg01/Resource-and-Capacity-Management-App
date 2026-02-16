@@ -1,8 +1,7 @@
+// Employee and capacity operations
 import { connectDB } from "../config/db.js";
 
-/* =========================================================
-   GET ALL EMPLOYEES (with filters)
-========================================================= */
+// Get all employees
 export const getAllEmployees = async (req, res) => {
   try {
     const db = await connectDB();
@@ -26,7 +25,7 @@ export const getAllEmployees = async (req, res) => {
       const capacityRecords = await capacityCollection
         .find({
           date: currentDate,
-          current_status: status === "active" ? "Active" : "Inactive",
+          current_status: status === "active" ? "Active" : "Inactive"
         })
         .toArray();
 
@@ -38,15 +37,14 @@ export const getAllEmployees = async (req, res) => {
     }
 
     return res.json(employees);
+
   } catch (err) {
     console.error("getAllEmployees error:", err);
     return res.status(500).json({ error: "Server error" });
   }
 };
 
-/* =========================================================
-   GET SINGLE EMPLOYEE
-========================================================= */
+// Get employee by ID
 export const getEmployeeById = async (req, res) => {
   try {
     const db = await connectDB();
@@ -59,13 +57,13 @@ export const getEmployeeById = async (req, res) => {
     if (!employee) return res.status(404).json({ error: "Employee not found" });
 
     const department = await departmentCollection.findOne({
-      dept_no: employee.dept_no,
+      dept_no: employee.dept_no
     });
 
     let managerName = null;
     if (employee.manager_id) {
       const manager = await employeeCollection.findOne({
-        emp_id: employee.manager_id,
+        emp_id: employee.manager_id
       });
       managerName = manager ? manager.emp_name : null;
     }
@@ -73,17 +71,16 @@ export const getEmployeeById = async (req, res) => {
     return res.json({
       ...employee,
       dept_name: department?.dept_name || null,
-      manager_name: managerName,
+      manager_name: managerName
     });
+
   } catch (err) {
     console.error("getEmployeeById error:", err);
     return res.status(500).json({ error: "Server error" });
   }
 };
 
-/* =========================================================
-   CREATE EMPLOYEE
-========================================================= */
+// Create employee
 export const createEmployee = async (req, res) => {
   try {
     const db = await connectDB();
@@ -92,7 +89,7 @@ export const createEmployee = async (req, res) => {
     if (!emp_name || !emp_title || !dept_no) {
       return res.status(400).json({
         success: false,
-        error: "Missing required fields: emp_name, emp_title, dept_no",
+        error: "Missing required fields: emp_name, emp_title, dept_no"
       });
     }
 
@@ -112,7 +109,7 @@ export const createEmployee = async (req, res) => {
       emp_name,
       emp_title,
       dept_no,
-      manager_id: manager_id ? parseInt(manager_id) : null,
+      manager_id: manager_id ? parseInt(manager_id) : null
     };
 
     await employeeCollection.insertOne(newEmployee);
@@ -129,22 +126,21 @@ export const createEmployee = async (req, res) => {
         date: dateNum,
         amount: 1,
         current_status: "Active",
-        comments: "",
+        comments: ""
       });
     }
 
     await capacityCollection.insertMany(capacityRecords);
 
     return res.json({ success: true, employee: newEmployee });
+
   } catch (err) {
     console.error("createEmployee error:", err);
     return res.status(500).json({ error: "Server error" });
   }
 };
 
-/* =========================================================
-   UPDATE EMPLOYEE
-========================================================= */
+// Update employee
 export const updateEmployee = async (req, res) => {
   try {
     const db = await connectDB();
@@ -154,7 +150,7 @@ export const updateEmployee = async (req, res) => {
     if (!emp_name || !emp_title || !dept_no) {
       return res.status(400).json({
         success: false,
-        error: "Missing required fields",
+        error: "Missing required fields"
       });
     }
 
@@ -168,7 +164,7 @@ export const updateEmployee = async (req, res) => {
       emp_name,
       emp_title,
       dept_no,
-      manager_id: manager_id ? parseInt(manager_id) : null,
+      manager_id: manager_id ? parseInt(manager_id) : null
     };
 
     await employeeCollection.updateOne(
@@ -177,15 +173,14 @@ export const updateEmployee = async (req, res) => {
     );
 
     return res.json({ success: true, employee: { emp_id: empId, ...updateData } });
+
   } catch (err) {
     console.error("updateEmployee error:", err);
     return res.status(500).json({ error: "Server error" });
   }
 };
 
-/* =========================================================
-   UPDATE EMPLOYEE STATUS
-========================================================= */
+// Update employee status
 export const updateEmployeeStatus = async (req, res) => {
   try {
     const db = await connectDB();
@@ -195,7 +190,7 @@ export const updateEmployeeStatus = async (req, res) => {
     if (!["Active", "Inactive"].includes(status)) {
       return res.status(400).json({
         success: false,
-        error: 'Status must be "Active" or "Inactive"',
+        error: 'Status must be "Active" or "Inactive"'
       });
     }
 
@@ -214,21 +209,20 @@ export const updateEmployeeStatus = async (req, res) => {
         $set: {
           current_status: status,
           amount: status === "Inactive" ? 0 : 1,
-          comments: comments || "",
-        },
+          comments: comments || ""
+        }
       }
     );
 
     return res.json({ success: true, emp_id: empId, new_status: status });
+
   } catch (err) {
     console.error("updateEmployeeStatus error:", err);
     return res.status(500).json({ error: "Server error" });
   }
 };
 
-/* =========================================================
-   GET EMPLOYEE CAPACITY
-========================================================= */
+// Get employee capacity
 export const getEmployeeCapacity = async (req, res) => {
   try {
     const db = await connectDB();
@@ -245,15 +239,14 @@ export const getEmployeeCapacity = async (req, res) => {
       return res.status(404).json({ error: "No capacity records found" });
 
     return res.json(capacityRecords);
+
   } catch (err) {
     console.error("getEmployeeCapacity error:", err);
     return res.status(500).json({ error: "Server error" });
   }
 };
 
-/* =========================================================
-   UPDATE EMPLOYEE CAPACITY
-========================================================= */
+// Update employee capacity
 export const updateEmployeeCapacity = async (req, res) => {
   try {
     const db = await connectDB();
@@ -263,7 +256,7 @@ export const updateEmployeeCapacity = async (req, res) => {
     if (!Array.isArray(updates)) {
       return res.status(400).json({
         success: false,
-        error: "Updates must be an array",
+        error: "Updates must be an array"
       });
     }
 
@@ -277,36 +270,34 @@ export const updateEmployeeCapacity = async (req, res) => {
         {
           $set: {
             amount: update.amount ?? 1,
-            comments: update.comments || "",
-          },
+            comments: update.comments || ""
+          }
         }
       );
     }
 
     return res.json({ success: true, emp_id: empId });
+
   } catch (err) {
     console.error("updateEmployeeCapacity error:", err);
     return res.status(500).json({ error: "Server error" });
   }
 };
 
-/* =========================================================
-   GET ALL DEPARTMENTS
-========================================================= */
+// Get all departments
 export const getAllDepartments = async (req, res) => {
   try {
     const db = await connectDB();
     const departments = await db.collection("department").find({}).toArray();
     return res.json(departments);
+
   } catch (err) {
     console.error("getAllDepartments error:", err);
     return res.status(500).json({ error: "Server error" });
   }
 };
 
-/* =========================================================
-   GET ALL MANAGERS
-========================================================= */
+// Get all managers
 export const getAllManagers = async (req, res) => {
   try {
     const db = await connectDB();
@@ -314,11 +305,12 @@ export const getAllManagers = async (req, res) => {
 
     const managers = await employeeCollection
       .find({
-        emp_title: { $regex: /manager|supervisor|lead|director/i },
+        emp_title: { $regex: /manager|supervisor|lead|director/i }
       })
       .toArray();
 
     return res.json(managers);
+
   } catch (err) {
     console.error("getAllManagers error:", err);
     return res.status(500).json({ error: "Server error" });

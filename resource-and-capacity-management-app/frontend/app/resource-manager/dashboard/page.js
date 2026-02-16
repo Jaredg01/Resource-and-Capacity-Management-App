@@ -13,18 +13,32 @@ export default function DashboardPage() {
   const router = useRouter();
   const [, startTransition] = useTransition();
 
-  // Load user session
+  /* ---------------------------------------------------------
+     SECURITY: CLIENT‑SIDE AUTH GUARD
+     ---------------------------------------------------------
+     • Ensures only authenticated users can access the dashboard
+     • Redirects immediately if no user session is found
+     • Prevents UI flash by blocking render until user is loaded
+  --------------------------------------------------------- */
   useEffect(() => {
     const stored = localStorage.getItem('user');
-    if (!stored) {
+    const token = localStorage.getItem('token');
+
+    // If either user OR token is missing → force logout
+    if (!stored || !token) {
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
       router.push('/login');
       return;
     }
+
+    // Load user into state
     startTransition(() => {
       setUser(JSON.parse(stored));
     });
   }, [router]);
 
+  // Loading state while user session is being validated
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -34,16 +48,35 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto mt-10 space-y-12">
-
-      {/* Dashboard Summary Component */}
-      <DashboardSummary />
+    /* ---------------------------------------------------------
+       PAGE CONTAINER (NOW EXPANDS FULL WIDTH)
+       ---------------------------------------------------------
+       • max-w-full allows the dashboard to stretch across
+         ultra‑wide monitors without restriction
+       • Same layout, same spacing — just more horizontal room
+    --------------------------------------------------------- */
+    <div className="w-full max-w-full mx-auto mt-2 space-y-12 px-4">
 
       {/* -----------------------------------------------------
-         NAVIGATION TILES
-         ----------------------------------------------------- */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[clamp(1rem,2vw,2.5rem)] w-full">
+         DASHBOARD SUMMARY (FULL WIDTH)
+      ----------------------------------------------------- */}
+      <div className="w-full">
+        <DashboardSummary />
+      </div>
 
+      {/* -----------------------------------------------------
+         NAVIGATION TILES (EXPAND WITH SCREEN SIZE)
+         -----------------------------------------------------
+         • Same 1 → 2 → 3 column behavior
+         • Tiles now stretch wider because container is wider
+      ----------------------------------------------------- */}
+      <div
+        className="
+          grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3
+          gap-[clamp(1.5rem,2vw,3rem)]
+          w-full
+        "
+      >
         {[
           { label: 'Capacity Summary', icon: '📊', href: '/capacity' },
           { label: 'Resources', icon: '👥', href: '/resource-manager/create-edit-resources' },
@@ -57,24 +90,26 @@ export default function DashboardPage() {
             onClick={() => router.push(tile.href)}
             className="
               bg-white rounded-lg shadow-sm border text-center border-gray-200
-              p-[clamp(1rem,1.5vw,2rem)]
+              p-[clamp(1.5rem,2.2vw,3rem)]
               hover:shadow-md hover:border-gray-500
               cursor-pointer transition
+              w-full
             "
           >
-            <div className="text-[clamp(2rem,2.5vw,3rem)] mb-2 text-gray-700">
+            {/* Tile Icon */}
+            <div className="text-[clamp(2.4rem,3vw,4rem)] mb-3 text-gray-700">
               {tile.icon}
             </div>
 
+            {/* Tile Label */}
             <h3
-              className="text-[clamp(1rem,1.2vw,1.4rem)] font-semibold text-gray-900 mb-2"
+              className="text-[clamp(1.2rem,1.4vw,1.6rem)] font-semibold text-gray-900"
               style={styles.outfitFont}
             >
               {tile.label}
             </h3>
           </div>
         ))}
-
       </div>
     </div>
   );

@@ -1,49 +1,3 @@
-// import express from "express";
-// import {
-//   getAllEmployees,
-//   getEmployeeById,
-//   createEmployee,
-//   updateEmployee,
-//   updateEmployeeStatus,
-//   getEmployeeCapacity,
-//   updateEmployeeCapacity,
-//   getAllDepartments,
-//   getAllManagers
-// } from "../controllers/resourceController.js";
-
-// const router = express.Router();
-
-// /* =========================================================
-//    EMPLOYEES
-// ========================================================= */
-// router.get("/employees", getAllEmployees);
-// router.get("/employees/:emp_id", getEmployeeById);
-// router.post("/employees", createEmployee);
-// router.put("/employees/:emp_id", updateEmployee);
-
-// /* =========================================================
-//    EMPLOYEE STATUS
-// ========================================================= */
-// router.put("/employees/:emp_id/status", updateEmployeeStatus);
-
-// /* =========================================================
-//    EMPLOYEE CAPACITY
-// ========================================================= */
-// router.get("/employees/:emp_id/capacity", getEmployeeCapacity);
-// router.put("/employees/:emp_id/capacity", updateEmployeeCapacity);
-
-// /* =========================================================
-//    DEPARTMENTS
-// ========================================================= */
-// router.get("/departments", getAllDepartments);
-
-// /* =========================================================
-//    MANAGERS
-// ========================================================= */
-// router.get("/managers", getAllManagers);
-
-// export default router;
-
 import express from "express";
 import {
   getAllEmployees,
@@ -59,33 +13,31 @@ import {
 
 const router = express.Router();
 
-/* =========================================================
-   EMPLOYEES
-========================================================= */
+// List all employees
 router.get("/employees", getAllEmployees);
+
+// Get employee by ID
 router.get("/employees/:emp_id", getEmployeeById);
+
+// Create employee
 router.post("/employees", createEmployee);
+
+// Update employee
 router.put("/employees/:emp_id", updateEmployee);
 
-/* =========================================================
-   EMPLOYEE STATUS
-========================================================= */
+// Update employee status
 router.patch("/employees/:emp_id/status", updateEmployeeStatus);
 
-/* =========================================================
-   EMPLOYEE CAPACITY
-========================================================= */
+// Get employee capacity
 router.get("/employees/:emp_id/capacity", getEmployeeCapacity);
+
+// Update employee capacity
 router.put("/employees/:emp_id/capacity", updateEmployeeCapacity);
 
-/* =========================================================
-   DEPARTMENTS
-========================================================= */
+// List all departments
 router.get("/departments", getAllDepartments);
 
-/* =========================================================
-   MANAGERS
-========================================================= */
+// List all managers
 router.get("/managers", getAllManagers);
 
 export default router;

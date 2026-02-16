@@ -3,7 +3,7 @@ import { getProfile } from "../controllers/profileController.js";
 
 const router = express.Router();
 
-// GET /api/profile?username=lmitchell
+// Fetch user profile by username (query param)
 router.get("/", getProfile);
 
 export default router;

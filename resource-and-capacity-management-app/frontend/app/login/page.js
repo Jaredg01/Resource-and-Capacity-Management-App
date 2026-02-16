@@ -7,68 +7,110 @@ import Image from 'next/image';
 import api from '@/lib/api';
 
 export default function LoginPage() {
+  /* ---------------------------------------------------------
+     STATE MANAGEMENT
+     ---------------------------------------------------------
+     • username/password → controlled inputs
+     • router → navigation after login
+  --------------------------------------------------------- */
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const router = useRouter();
 
+  /* ---------------------------------------------------------
+     SECURITY: LOGIN HANDLER
+     ---------------------------------------------------------
+     • Prevents default form submission
+     • Sends credentials securely to backend
+     • Defensive checks on response structure
+     • Stores token + user safely in localStorage
+     • Applies role‑based routing
+  --------------------------------------------------------- */
   const handleLogin = async (e) => {
     e.preventDefault();
 
     try {
-const res = await api.post("/auth/login", {
-  username,
-  password
-});
+      const res = await api.post('/auth/login', {
+        username,
+        password
+      });
 
-const user = res.data.user;
-const token = res.data.token;
+      const user = res?.data?.user;
+      const token = res?.data?.token;
 
-// Save user
-localStorage.setItem("user", JSON.stringify(user));
+      // Defensive: ensure backend returned required fields
+      if (!user || !token) {
+        throw new Error('Invalid login response');
+      }
 
-// Save token (required for protected routes)
-localStorage.setItem("token", token);
+      // Save user + token
+      localStorage.setItem('user', JSON.stringify(user));
+      localStorage.setItem('token', token);
 
-      // -----------------------------------------
-      // ROLE‑BASED ROUTING
-      // -----------------------------------------
+      /* -----------------------------------------------------
+         ROLE‑BASED ROUTING
+         -----------------------------------------------------
+         • 1 → Resource Manager
+         • 2 → Stakeholder
+         • 3 → Team Member
+      ----------------------------------------------------- */
       if (user.acc_type_id === 1) {
-        router.push("/resource-manager/dashboard");
+        router.push('/resource-manager/dashboard');
         return;
       }
 
       if (user.acc_type_id === 2) {
-        router.push("/stakeholder/dashboard");
+        router.push('/stakeholder/dashboard');
         return;
       }
 
       if (user.acc_type_id === 3) {
-        router.push("/team-member/dashboard");
+        router.push('/team-member/dashboard');
         return;
       }
 
-      // fallback
-      router.push("/dashboard");
+      // Fallback
+      router.push('/dashboard');
 
     } catch (error) {
-      console.error("Login error:", error);
-      alert(error.response?.data?.error || "Login failed. Please try again.");
+      console.error('Login error:', error);
+
+      const message =
+        error?.response?.data?.error ||
+        error?.message ||
+        'Login failed. Please try again.';
+
+      alert(message);
     }
   };
 
+  /* ---------------------------------------------------------
+     FINAL RENDER
+     ---------------------------------------------------------
+     • Full‑screen modal overlay
+     • Prevents header flash by capturing background clicks
+     • Clean, centered login card
+  --------------------------------------------------------- */
   return (
     <>
-      {/* Prevent header flash by routing back to /login */}
       <div
-        className="fixed inset-0 bg-white/30 backdrop-blur-sm flex items-center justify-center z-50"
+        className="
+          fixed inset-0 bg-white/30 backdrop-blur-sm
+          flex items-center justify-center z-50
+        "
         onClick={() => router.push('/login')}
       >
         <div
-          className="bg-white rounded-xl shadow-xl p-8 w-full max-w-lg m-4 border border-gray-200"
+          className="
+            bg-white rounded-xl shadow-xl p-8
+            w-full max-w-lg m-4 border border-gray-200
+          "
           onClick={(e) => e.stopPropagation()}
         >
 
-          {/* Header */}
+          {/* ---------------------------------------------------
+             HEADER (LOGO + TITLE)
+          --------------------------------------------------- */}
           <div className="flex justify-between items-center mb-6">
             <Image
               src="/CapstoneDynamicsLogo.png"
@@ -84,6 +126,7 @@ localStorage.setItem("token", token);
               >
                 Capstone Dynamics
               </h3>
+
               <h4
                 className="text-base font-semibold text-black mt-1"
                 style={{ fontFamily: 'Outfit, sans-serif' }}
@@ -93,9 +136,12 @@ localStorage.setItem("token", token);
             </div>
           </div>
 
-          {/* Login Form */}
+          {/* ---------------------------------------------------
+             LOGIN FORM
+          --------------------------------------------------- */}
           <form onSubmit={handleLogin} className="space-y-6">
 
+            {/* USERNAME */}
             <div>
               <label className="block text-base font-medium text-gray-700 mb-2">
                 Username
@@ -104,11 +150,15 @@ localStorage.setItem("token", token);
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full px-5 py-3 border text-gray-700 border-gray-300 rounded-lg text-base"
+                className="
+                  w-full px-5 py-3 border text-gray-700
+                  border-gray-300 rounded-lg text-base
+                "
                 required
               />
             </div>
 
+            {/* PASSWORD */}
             <div>
               <label className="block text-base font-medium text-gray-700 mb-2">
                 Password
@@ -117,11 +167,15 @@ localStorage.setItem("token", token);
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-5 py-3 border text-gray-700 border-gray-300 rounded-lg text-base"
+                className="
+                  w-full px-5 py-3 border text-gray-700
+                  border-gray-300 rounded-lg text-base
+                "
                 required
               />
             </div>
 
+            {/* FORGOT PASSWORD */}
             <div className="text-right">
               <Link
                 href="/forgot-password"
@@ -131,18 +185,25 @@ localStorage.setItem("token", token);
               </Link>
             </div>
 
+            {/* ACTION BUTTONS */}
             <div className="flex gap-4">
               <button
                 type="button"
                 onClick={() => router.push('/login')}
-                className="flex-1 px-5 py-3 text-gray-700 border border-gray-500 rounded-lg hover:bg-gray-300 text-base"
+                className="
+                  flex-1 px-5 py-3 text-gray-700 border border-gray-500
+                  rounded-lg hover:bg-gray-300 text-base
+                "
               >
                 Cancel
               </button>
 
               <button
                 type="submit"
-                className="flex-1 px-5 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-base"
+                className="
+                  flex-1 px-5 py-3 bg-blue-600 text-white
+                  rounded-lg hover:bg-blue-700 text-base
+                "
               >
                 Sign In
               </button>

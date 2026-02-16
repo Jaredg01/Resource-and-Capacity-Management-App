@@ -1,8 +1,7 @@
+// Allocation operations
 import { connectDB } from "../config/db.js";
 
-/* ---------------------------------------------------------
-   Build 16‑month rolling window
---------------------------------------------------------- */
+// Build rolling month range
 function buildMonthRange() {
   const months = [];
   const now = new Date();
@@ -21,9 +20,7 @@ function buildMonthRange() {
   return months;
 }
 
-/* ---------------------------------------------------------
-   GET ALL ASSIGNMENT ALLOCATIONS
---------------------------------------------------------- */
+// Get all allocations
 export const getAllAllocations = async (req, res) => {
   try {
     const db = await connectDB();
@@ -128,7 +125,6 @@ export const getAllAllocations = async (req, res) => {
 
       if (account) {
         const myEmpId = account.emp_id;
-
         myAssignments = allAssignments.filter(
           (r) => r.employee.emp_id === myEmpId
         );
@@ -147,36 +143,26 @@ export const getAllAllocations = async (req, res) => {
   }
 };
 
-/* ---------------------------------------------------------
-   GET ONE ALLOCATION ROW (BY emp_id OR emp_name)
---------------------------------------------------------- */
+// Get allocation row by employee ID
 export const getAllocationById = async (req, res) => {
-
-
   try {
     const db = await connectDB();
-
-    // ⭐ USE PARAMS, NOT QUERY
     const emp_id = parseInt(req.params.id, 10);
 
     if (!emp_id || isNaN(emp_id)) {
       return res.status(400).json({ error: "Invalid emp_id" });
     }
 
-    // Load employee
     const employee = await db.collection("employee").findOne({ emp_id });
-
     if (!employee) {
       return res.status(404).json({ error: "Employee not found" });
     }
 
-    // Load allocations
     const allocations = await db
       .collection("allocation")
       .find({ emp_id })
       .toArray();
 
-    // Load assignment (based on first allocation)
     let assignment = null;
 
     if (allocations.length > 0) {
@@ -198,7 +184,6 @@ export const getAllocationById = async (req, res) => {
       }
     }
 
-    // Load managers (acc_type_id = 1)
     const managerAccounts = await db
       .collection("account")
       .find({ "account.acc_type_id": 1 })
@@ -228,9 +213,7 @@ export const getAllocationById = async (req, res) => {
   }
 };
 
-/* ---------------------------------------------------------
-   GET DEPARTMENT FOR VP NAME (Assignment Allocations)
---------------------------------------------------------- */
+// Get department for VP name
 export const getDeptForEmployee = async (req, res) => {
   try {
     const name = req.query.name;
@@ -263,15 +246,12 @@ export const getDeptForEmployee = async (req, res) => {
   }
 };
 
-/* ---------------------------------------------------------
-   GET PROJECTS (ALL OR ONE)
---------------------------------------------------------- */
+// Get projects (all or one)
 export const getProjects = async (req, res) => {
   try {
     const project = req.query.project;
     const db = await connectDB();
 
-    // If project param exists → return ONE assignment
     if (project) {
       const assignment = await db
         .collection("assignment")
@@ -280,7 +260,6 @@ export const getProjects = async (req, res) => {
       return res.json({ assignment });
     }
 
-    // Otherwise → return list of all project names
     const projects = await db
       .collection("assignment")
       .find({})
@@ -295,9 +274,7 @@ export const getProjects = async (req, res) => {
   }
 };
 
-/* ---------------------------------------------------------
-   GET EMPLOYEE + DEPARTMENT NAME (BY emp_id)
---------------------------------------------------------- */
+// Get employee + department name
 export const getEmployee = async (req, res) => {
   try {
     const emp_id = Number(req.query.emp_id);
@@ -308,7 +285,6 @@ export const getEmployee = async (req, res) => {
 
     const db = await connectDB();
 
-    // 1. Get employee
     const employee = await db
       .collection("employee")
       .findOne({ emp_id });
@@ -317,7 +293,6 @@ export const getEmployee = async (req, res) => {
       return res.status(404).json({ error: "Employee not found" });
     }
 
-    // 2. Get department name
     const department = await db
       .collection("department")
       .findOne({ dept_no: employee.dept_no });
@@ -333,16 +308,14 @@ export const getEmployee = async (req, res) => {
   }
 };
 
-/* ---------------------------------------------------------
-   GET DATA MANAGEMENT EMPLOYEES (dept_no = "D01")
---------------------------------------------------------- */
+// Get Data Management employees
 export const getDMEmployees = async (req, res) => {
   try {
     const db = await connectDB();
 
     const employees = await db
       .collection("employee")
-      .find({ dept_no: "D01" }) // Data Management department
+      .find({ dept_no: "D01" })
       .project({
         emp_id: 1,
         emp_name: 1,
@@ -360,9 +333,7 @@ export const getDMEmployees = async (req, res) => {
   }
 };
 
-/* ---------------------------------------------------------
-   UPDATE (OR UPSERT) ALLOCATION AMOUNT
---------------------------------------------------------- */
+// Update or upsert allocation amount
 export const editAllocationAmount = async (req, res) => {
   try {
     const { emp_id, month, amount, activity, category } = req.body;
@@ -395,9 +366,7 @@ export const editAllocationAmount = async (req, res) => {
   }
 };
 
-/* ---------------------------------------------------------
-   DELETE ALLOCATION ENTRY
---------------------------------------------------------- */
+// Delete allocation entry
 export const deleteAllocation = async (req, res) => {
   try {
     const { emp_id, month, activity, category } = req.body;
@@ -419,9 +388,7 @@ export const deleteAllocation = async (req, res) => {
   }
 };
 
-/* ---------------------------------------------------------
-   UPDATE ASSIGNMENT (EDIT)
---------------------------------------------------------- */
+// Update assignment (edit)
 export const updateAllocation = async (req, res) => {
   try {
     const {
@@ -454,7 +421,7 @@ export const updateAllocation = async (req, res) => {
         requestor,
         requestor_vp,
         requesting_dept,
-        department: requesting_dept, // preserve original behavior
+        department: requesting_dept,
         target_period,
         completion_date: completion_date || null,
         description,
@@ -476,21 +443,17 @@ export const updateAllocation = async (req, res) => {
   }
 };
 
-/* ---------------------------------------------------------
-   GET ALL DROPDOWNS FOR ASSIGNMENT‑ALLOCATIONS
---------------------------------------------------------- */
+// Get dropdowns for allocation UI
 export const getAllocationDropdowns = async (req, res) => {
   try {
     const db = await connectDB();
 
-    // EMPLOYEES
     const employees = await db.collection("employee")
       .find({})
       .project({ emp_id: 1, emp_name: 1 })
       .sort({ emp_name: 1 })
       .toArray();
 
-    // MANAGERS (reports_to list)
     const managers = await db.collection("employee")
       .aggregate([
         { $match: { manager_name: { $ne: null } } },
@@ -500,7 +463,6 @@ export const getAllocationDropdowns = async (req, res) => {
       ])
       .toArray();
 
-    // PROJECTS
     const projects = await db.collection("assignment")
       .aggregate([
         { $match: { project_name: { $ne: null } } },
@@ -510,7 +472,6 @@ export const getAllocationDropdowns = async (req, res) => {
       ])
       .toArray();
 
-    // CATEGORIES
     const categories = await db.collection("assignment")
       .aggregate([
         { $match: { category: { $ne: null } } },
@@ -520,7 +481,6 @@ export const getAllocationDropdowns = async (req, res) => {
       ])
       .toArray();
 
-    // LEADERS
     const leaders = await db.collection("assignment")
       .aggregate([
         { $match: { leader: { $ne: null } } },
@@ -530,7 +490,6 @@ export const getAllocationDropdowns = async (req, res) => {
       ])
       .toArray();
 
-    // REQUESTOR + REQUESTOR VP
     const requestors = await db.collection("assignment")
       .aggregate([
         { $project: { names: ["$requestor", "$requestor_vp"] } },
@@ -542,7 +501,6 @@ export const getAllocationDropdowns = async (req, res) => {
       ])
       .toArray();
 
-    // REQUESTING DEPARTMENTS
     const requestingDepts = await db.collection("assignment")
       .aggregate([
         { $match: { requesting_dept_name: { $ne: null } } },
@@ -568,9 +526,7 @@ export const getAllocationDropdowns = async (req, res) => {
   }
 };
 
-/* ---------------------------------------------------------
-   CREATE NEW ALLOCATION ENTRY
---------------------------------------------------------- */
+// Create new allocation entry
 export const createAllocation = async (req, res) => {
   try {
     const { emp_id, project } = req.body;
@@ -583,7 +539,6 @@ export const createAllocation = async (req, res) => {
 
     const db = await connectDB();
 
-    // Fetch assignment details
     const assignment = await db
       .collection("assignment")
       .findOne({ project_name: project });
@@ -594,19 +549,17 @@ export const createAllocation = async (req, res) => {
       });
     }
 
-    // Auto-generate YYYYMM
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, "0");
     const formattedDate = Number(`${year}${month}`);
 
-    // Build allocation document
     const allocationDoc = {
       emp_id: Number(emp_id),
       activity: assignment.project_name,
       category: assignment.category,
       date: formattedDate,
-      amount: 1 // stored as Number; MongoDB will treat as Double automatically
+      amount: 1
     };
 
     const result = await db.collection("allocation").insertOne(allocationDoc);
