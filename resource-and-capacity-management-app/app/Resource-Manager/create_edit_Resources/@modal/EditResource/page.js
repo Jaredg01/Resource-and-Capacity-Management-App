@@ -25,9 +25,6 @@ export default function EditResourceModal() {
     other_info: ''
   });
 
-  const MANAGER_LEVEL_OPTIONS = ['None', 'Level 1', 'Level 2', 'Level 3', 'Level 4', 'Level 5'];
-  const DIRECTOR_LEVEL_OPTIONS = ['None', 'Level 1', 'Level 2', 'Level 3', 'Level 4', 'Level 5'];
-
   useEffect(() => {
     if (empId) {
       fetchEmployee();
@@ -71,8 +68,34 @@ export default function EditResourceModal() {
     setDirectorLevelOptions(uniqueDirector);
   };
 
-  const getUniqueManagerLevels = () => (
-    [...new Set(employeesList.map((e) => e.manager_level).filter(Boolean))]
+  const getAccTypeId = (manager) => (
+    manager?.acc_type_id ?? manager?.account?.acc_type_id ?? manager?.accTypeId
+  );
+
+  const getManagerLevelOptions = () => (
+    [...new Map(
+      [
+        ...managers
+          .filter((manager) => String(getAccTypeId(manager)) === '1')
+          .map((manager) => [String(manager.emp_id), getEmployeeNameById(manager.emp_id)]),
+        formData.manager_level
+          ? [String(formData.manager_level), getEmployeeNameById(formData.manager_level)]
+          : null
+      ].filter(Boolean)
+    ).entries()]
+  );
+
+  const getDirectorLevelOptions = () => (
+    [...new Map(
+      [
+        ...managers
+          .filter((manager) => String(getAccTypeId(manager)) === '1')
+          .map((manager) => [String(manager.emp_id), getEmployeeNameById(manager.emp_id)]),
+        formData.director_level
+          ? [String(formData.director_level), getEmployeeNameById(formData.director_level)]
+          : null
+      ].filter(Boolean)
+    ).entries()]
   );
 
   const getEmployeeNameById = (empId) => {
@@ -167,12 +190,7 @@ export default function EditResourceModal() {
                 {[...new Map(
                   [
                     ...managers
-                      .filter((manager) => {
-                        const accTypeId =
-                          manager.acc_type_id ?? manager.account?.acc_type_id ?? manager.accTypeId;
-                        if (accTypeId === undefined || accTypeId === null) return false;
-                        return String(accTypeId) === '1';
-                      })
+                      .filter((manager) => String(getAccTypeId(manager)) === '1')
                       .map((m) => [String(m.emp_id), getEmployeeNameById(m.emp_id)]),
                     formData.manager_id
                       ? [String(formData.manager_id), getEmployeeNameById(formData.manager_id)]
@@ -195,14 +213,7 @@ export default function EditResourceModal() {
                 onChange={(e) => setFormData({ ...formData, manager_level: e.target.value })}
               >
                 <option value="" className="text-gray-900 bg-white">Select Manager Level</option>
-                {[...new Map(
-                  [
-                    ...getUniqueManagerLevels().map((levelId) => [String(levelId), getEmployeeNameById(levelId)]),
-                    formData.manager_level
-                      ? [String(formData.manager_level), getEmployeeNameById(formData.manager_level)]
-                      : null
-                  ].filter(Boolean)
-                ).entries()].map(([id, name]) => (
+                {getManagerLevelOptions().map(([id, name]) => (
                   <option key={id} value={id} className="text-gray-900 bg-white">
                     {name}
                   </option>
@@ -219,14 +230,7 @@ export default function EditResourceModal() {
                 onChange={(e) => setFormData({ ...formData, director_level: e.target.value })}
               >
                 <option value="" className="text-gray-900 bg-white">Select Director Level</option>
-                {[...new Map(
-                  [
-                    ...directorLevelOptions.map((levelId) => [String(levelId), getEmployeeNameById(levelId)]),
-                    formData.director_level
-                      ? [String(formData.director_level), getEmployeeNameById(formData.director_level)]
-                      : null
-                  ].filter(Boolean)
-                ).entries()].map(([id, name]) => (
+                {getDirectorLevelOptions().map(([id, name]) => (
                   <option key={id} value={id} className="text-gray-900 bg-white">
                     {name}
                   </option>
@@ -253,7 +257,7 @@ export default function EditResourceModal() {
               <button
                 type="button"
                 onClick={() => handleStatusChange('Active')}
-                className={`px-4 py-2 rounded ${
+                className={`px-4 py-2 rounded cursor-pointer ${
                   statusValue === 'Active'
                     ? 'bg-green-600 text-white'
                     : 'bg-green-100 text-green-800'
@@ -264,7 +268,7 @@ export default function EditResourceModal() {
               <button
                 type="button"
                 onClick={() => handleStatusChange('Inactive')}
-                className={`px-4 py-2 rounded ${
+                className={`px-4 py-2 rounded cursor-pointer ${
                   statusValue === 'Inactive'
                     ? 'bg-red-600 text-white'
                     : 'bg-red-100 text-red-800'
@@ -280,13 +284,13 @@ export default function EditResourceModal() {
             <button
               type="button"
               onClick={() => router.back()}
-              className="px-4 py-2 bg-gray-200 text-gray-900 rounded"
+              className="px-4 py-2 bg-gray-200 text-gray-900 rounded cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-[#017ACB] text-white rounded"
+              className="px-4 py-2 bg-[#017ACB] text-white rounded cursor-pointer"
             >
               Save Changes
             </button>
