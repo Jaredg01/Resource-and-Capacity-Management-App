@@ -113,7 +113,12 @@ export default function InitiativesPage() {
         else if (activeTab === 'cancelled') params.status = 'Cancelled';
 
         
-        const res = await api.get('/initiatives', { params });
+        const res = await api.get('/initiatives', { 
+          params: { 
+            ...params,
+            username: user.username  
+          }
+        });
 
         if (!res?.data || aborted) return;
 
