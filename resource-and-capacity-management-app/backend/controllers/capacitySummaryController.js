@@ -1,7 +1,7 @@
 // Get capacity summary data
 import { connectDB } from "../config/db.js";
 
-function formatMonthLabel(yyyymm) {
+export function formatMonthLabel(yyyymm) {
   const s = String(yyyymm);
   const year = Number(s.slice(0, 4));
   const month = Number(s.slice(4, 6));
@@ -13,7 +13,7 @@ function formatMonthLabel(yyyymm) {
   return `${shortMonth}-${shortYear}`;
 }
 
-function computeMonthWindow(startYYYYMM, count) {
+export function computeMonthWindow(startYYYYMM, count) {
   const months = [];
   let year = Math.floor(startYYYYMM / 100);
   let month = startYYYYMM % 100;

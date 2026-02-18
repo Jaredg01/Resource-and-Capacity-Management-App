@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 18, "column": 0}, "map": {"version":3,"sources":["file:///C:/SAIT/capstone_project/Resource-and-Capacity-Management-App/resource-and-capacity-management-app/app/dashboard/resources/page.js"],"sourcesContent":["// Resources management page\r\n\r\nexport default function ResourcesPage() {\r\n  return (\r\n    <div>\r\n      <p>Manage resources here.</p>\r\n    </div>\r\n  );\r\n}\r\n"],"names":[],"mappings":"AAAA,4BAA4B;;;;;;;AAEb,SAAS;IACtB,qBACE,kSAAC;kBACC,cAAA,kSAAC;sBAAE;;;;;;;;;;;AAGT"}}]
+}

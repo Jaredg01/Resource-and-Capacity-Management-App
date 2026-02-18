@@ -22,7 +22,7 @@ import capacitySummaryRoutes from "./routes/capacitySummaryRoutes.js";
 import capacityMonthsRoutes from "./routes/capacityMonthsRoutes.js";
 import initiativeRoutes from "./routes/initiativeRoutes.js";
 import assignmentRoutes from "./routes/assignmentRoutes.js";
-// import reportsRoutes from "./routes/reportsRoutes.js";
+import reportsRoutes from "./routes/reportsRoutes.js";
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -60,7 +60,7 @@ app.use("/api/capacity-summary", capacitySummaryRoutes);
 app.use("/api/capacity-summary/months", capacityMonthsRoutes);
 app.use("/api/initiatives", initiativeRoutes);
 app.use("/api/assignments-allocations", assignmentRoutes);
-// app.use("/api/reports", reportsRoutes);
+app.use("/api/reports", reportsRoutes);
 
 // -----------------------------------------------------------------------------
 // 404 Handler

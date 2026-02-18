@@ -1,0 +1,7 @@
+{
+  "/Resource-Manager/Profile/login/page": "app/Resource-Manager/Profile/login/page.js",
+  "/Resource-Manager/create_edit_Resources/page": "app/Resource-Manager/create_edit_Resources/page.js",
+  "/Resource-Manager/dashboard/page": "app/Resource-Manager/dashboard/page.js",
+  "/api/Resource-Manager/summary/route": "app/api/Resource-Manager/summary/route.js",
+  "/page": "app/page.js"
+}

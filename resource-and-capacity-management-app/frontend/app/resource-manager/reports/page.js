@@ -1,15 +1,15 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import api from '@/lib/api';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import api from "@/lib/api";
 
 const styles = {
-  outfitFont: { fontFamily: 'Outfit, sans-serif' }
+  outfitFont: { fontFamily: "Outfit, sans-serif" },
 };
 
 function fmt(n) {
-  if (n === null || n === undefined || isNaN(n)) return '0.00';
+  if (n === null || n === undefined || isNaN(n)) return "0.00";
   return Number(n).toFixed(2);
 }
 
@@ -17,12 +17,14 @@ export default function CapacitySummary() {
   const router = useRouter();
 
   const [user, setUser] = useState(null);
-  const [viewMode, setViewMode] = useState('month');
+  const [viewMode, setViewMode] = useState("month");
 
   const [selectableMonths, setSelectableMonths] = useState([]);
   const [startMonth, setStartMonth] = useState(null);
 
   const [months, setMonths] = useState([]);
+  const [reportMonths, setReportMonths] = useState([]);
+  const [rows, setRows] = useState([]);
   const [categories, setCategories] = useState([]);
   const [totals, setTotals] = useState([]);
   const [peopleCapacity, setPeopleCapacity] = useState([]);
@@ -36,11 +38,11 @@ export default function CapacitySummary() {
   --------------------------------------------------------- */
   useEffect(() => {
     try {
-      const stored = localStorage.getItem('user');
+      const stored = localStorage.getItem("user");
       if (stored) setUser(JSON.parse(stored));
     } catch {
-      localStorage.removeItem('user');
-      localStorage.removeItem('token');
+      localStorage.removeItem("user");
+      localStorage.removeItem("token");
     }
   }, []);
 
@@ -52,21 +54,18 @@ export default function CapacitySummary() {
 
     async function loadMonths() {
       try {
-        const res = await api.get('/capacity-summary/months');
+        const res = await api.get("/capacity-summary/months");
         const data = res?.data;
         if (!data?.months) return;
 
         setSelectableMonths(data.months);
 
         const today = new Date();
-        const currentYYYYMM =
-          today.getFullYear() * 100 + (today.getMonth() + 1);
+        const currentYYYYMM = today.getFullYear() * 100 + (today.getMonth() + 1);
 
-        const match = data.months.find(m => m.value === currentYYYYMM);
+        const match = data.months.find((m) => m.value === currentYYYYMM);
 
-        setStartMonth(
-          match ? match.value : data.months[data.months.length - 1].value
-        );
+        setStartMonth(match ? match.value : data.months[data.months.length - 1].value);
       } finally {
         setLoadingMonths(false);
       }
@@ -84,9 +83,7 @@ export default function CapacitySummary() {
     async function loadSummary() {
       setLoadingSummary(true);
       try {
-        const res = await api.get(
-          `/capacity-summary?start=${encodeURIComponent(startMonth)}&months=6`
-        );
+        const res = await api.get(`/capacity-summary?start=${encodeURIComponent(startMonth)}&months=6`);
 
         const data = res?.data || {};
 
@@ -103,6 +100,20 @@ export default function CapacitySummary() {
     loadSummary();
   }, [user, startMonth]);
 
+  useEffect(() => {
+    if (!user) return;
+
+    async function fetchData() {
+      const res = await api.get(`/reports?start=202501&months=6`);
+      const data = res?.data || {};
+
+      setReportMonths(data.months || []);
+      setRows(data.data || []);
+    }
+
+    fetchData();
+  }, [user]);
+
   if (!user || loadingMonths || loadingSummary) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -115,25 +126,50 @@ export default function CapacitySummary() {
      CONDITIONAL TABLE RENDERING
   --------------------------------------------------------- */
   function renderTableBody() {
-
-    // TOTAL ONLY VIEW
-    if (viewMode === 'total') {
+    
+    // ACTIVITY ALLOCATION VIEW
+    if (viewMode === "total") {
       return (
-        <tbody>
-          <tr className="bg-gray-100 font-semibold">
-            <td className="px-6 py-3">Total Allocated</td>
-            {totals.map((val, idx) => (
-              <td key={idx} className="px-6 py-3 text-center">
-                {fmt(val)}
-              </td>
+        <>
+          <thead className="bg-[#017ACB] text-white">
+            <tr>
+              <th className="px-6 py-3 text-left font-semibold">Row Labels</th>
+
+              {reportMonths.map((month) => (
+                <th key={month} className="px-6 py-3 text-center font-semibold">
+                  {month}
+                </th>
+              ))}
+            </tr>
+          </thead>
+
+          <tbody>
+            {rows.map((row, idx) => (
+              <tr key={row.activity} className={idx % 2 === 0 ? "bg-gray-50" : "bg-white"}>
+                <td className="px-6 py-3 font-medium text-gray-800">{row.activity}</td>
+
+                {reportMonths.map((m) => (
+                  <td key={m} className="px-6 py-3 text-center text-gray-700">
+                    {fmt(row.months?.[m])}
+                  </td>
+                ))}
+              </tr>
             ))}
-          </tr>
-        </tbody>
+            <tr className="bg-gray-100 font-semibold">
+              <td className="px-6 py-3">Grand Total</td>
+              {/* {totals.map((val, idx) => (
+                <td key={idx} className="px-6 py-3 text-center">
+                  {fmt(val)}
+                </td>
+              ))} */}
+            </tr>
+          </tbody>
+        </>
       );
     }
 
     // PERSON VIEW
-    if (viewMode === 'person') {
+    if (viewMode === "person") {
       return (
         <tbody>
           <tr className="bg-gray-50 font-semibold">
@@ -150,60 +186,60 @@ export default function CapacitySummary() {
 
     // DEFAULT MONTH VIEW
     return (
-      <tbody className="divide-y">
+      <>
+        <thead className="bg-[#017ACB] text-white">
+          <tr>
+            <th className="px-6 py-3 text-left font-semibold">Row Labels</th>
 
-        {categories.map((cat, idx) => (
-          <tr
-            key={cat.label}
-            className={idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'}
-          >
-            <td className="px-6 py-3 font-medium text-gray-800">
-              {cat.label}
-            </td>
+            {months.map((month) => (
+              <th key={month} className="px-6 py-3 text-center font-semibold">
+                {month}
+              </th>
+            ))}
+          </tr>
+        </thead>
 
-            {cat.values.map((val, i) => (
-              <td
-                key={i}
-                className="px-6 py-3 text-center text-gray-700"
-              >
+        <tbody className="divide-y">
+          {categories.map((cat, idx) => (
+            <tr key={cat.label} className={idx % 2 === 0 ? "bg-gray-50" : "bg-white"}>
+              <td className="px-6 py-3 font-medium text-gray-800">{cat.label}</td>
+
+              {cat.values.map((val, i) => (
+                <td key={i} className="px-6 py-3 text-center text-gray-700">
+                  {fmt(val)}
+                </td>
+              ))}
+            </tr>
+          ))}
+
+          <tr className="bg-gray-100 font-semibold">
+            <td className="px-6 py-3">Total Allocated</td>
+            {totals.map((val, idx) => (
+              <td key={idx} className="px-6 py-3 text-center">
                 {fmt(val)}
               </td>
             ))}
           </tr>
-        ))}
 
-        <tr className="bg-gray-100 font-semibold">
-          <td className="px-6 py-3">Total Allocated</td>
-          {totals.map((val, idx) => (
-            <td key={idx} className="px-6 py-3 text-center">
-              {fmt(val)}
-            </td>
-          ))}
-        </tr>
+          <tr className="bg-gray-50">
+            <td className="px-6 py-3 font-semibold">Total People Capacity</td>
+            {peopleCapacity.map((val, idx) => (
+              <td key={idx} className="px-6 py-3 text-center">
+                {fmt(val)}
+              </td>
+            ))}
+          </tr>
 
-        <tr className="bg-gray-50">
-          <td className="px-6 py-3 font-semibold">
-            Total People Capacity
-          </td>
-          {peopleCapacity.map((val, idx) => (
-            <td key={idx} className="px-6 py-3 text-center">
-              {fmt(val)}
-            </td>
-          ))}
-        </tr>
-
-        <tr className="bg-gray-50">
-          <td className="px-6 py-3 font-semibold">
-            Remaining Capacity
-          </td>
-          {remainingCapacity.map((val, idx) => (
-            <td key={idx} className="px-6 py-3 text-center">
-              {fmt(val)}
-            </td>
-          ))}
-        </tr>
-
-      </tbody>
+          <tr className="bg-gray-50">
+            <td className="px-6 py-3 font-semibold">Remaining Capacity</td>
+            {remainingCapacity.map((val, idx) => (
+              <td key={idx} className="px-6 py-3 text-center">
+                {fmt(val)}
+              </td>
+            ))}
+          </tr>
+        </tbody>
+      </>
     );
   }
 
@@ -213,15 +249,10 @@ export default function CapacitySummary() {
   return (
     <div className="w-full bg-gray-50">
       <main className="max-w-7xl mx-auto px-6 py-8">
-
         {/* HEADER */}
         <div className="flex items-center justify-between mb-8">
-
           <div className="flex items-center gap-4">
-            <h2
-              className="text-3xl font-bold text-gray-900"
-              style={styles.outfitFont}
-            >
+            <h2 className="text-3xl font-bold text-gray-900" style={styles.outfitFont}>
               Capacity Report
             </h2>
 
@@ -234,12 +265,9 @@ export default function CapacitySummary() {
           </div>
 
           <div className="flex items-center gap-6">
-
             {/* VIEW DROPDOWN */}
             <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-gray-700">
-                View:
-              </label>
+              <label className="text-sm font-medium text-gray-700">View:</label>
 
               <select
                 value={viewMode}
@@ -248,15 +276,13 @@ export default function CapacitySummary() {
               >
                 <option value="month">Allocation per Month</option>
                 <option value="person">Allocation per Person</option>
-                <option value="total">Total Allocated</option>
+                <option value="total">Total Allocation by Activity</option>
               </select>
             </div>
 
             {/* START MONTH */}
             <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-gray-700">
-                Start Month:
-              </label>
+              <label className="text-sm font-medium text-gray-700">Start Month:</label>
 
               <select
                 value={startMonth}
@@ -274,39 +300,15 @@ export default function CapacitySummary() {
             <button className="bg-[#017ACB] text-white px-5 py-2 rounded-md shadow hover:bg-[#015f9c] transition">
               Export CSV
             </button>
-
           </div>
         </div>
 
         {/* TABLE */}
         <div className="bg-white rounded-xl shadow-md border overflow-hidden">
-
           <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-
-              <thead className="bg-[#017ACB] text-white">
-                <tr>
-                  <th className="px-6 py-3 text-left font-semibold">
-                    Category
-                  </th>
-
-                  {months.map((month) => (
-                    <th
-                      key={month}
-                      className="px-6 py-3 text-center font-semibold"
-                    >
-                      {month}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-
-              {renderTableBody()}
-
-            </table>
+            <table className="min-w-full text-sm">{renderTableBody()}</table>
           </div>
         </div>
-
       </main>
     </div>
   );
