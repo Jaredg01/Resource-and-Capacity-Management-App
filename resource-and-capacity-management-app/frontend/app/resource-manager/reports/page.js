@@ -86,6 +86,7 @@ export default function CapacitySummary() {
         const res = await api.get(`/capacity-summary?start=${encodeURIComponent(startMonth)}&months=6`);
 
         const data = res?.data || {};
+        console.log("Capacity Summary Data:", data.months);
 
         setMonths(data.months || []);
         setCategories(data.categories || []);
@@ -101,18 +102,20 @@ export default function CapacitySummary() {
   }, [user, startMonth]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !startMonth) return;
 
-    async function fetchData() {
-      const res = await api.get(`/reports?start=202501&months=6`);
+    async function loadActivitySummary() {
+      const res = await api.get(`/reports?start=${encodeURIComponent(startMonth)}&months=6`);
       const data = res?.data || {};
+
+      console.log("Activity Summary Data:", data.months);
 
       setReportMonths(data.months || []);
       setRows(data.data || []);
     }
 
-    fetchData();
-  }, [user]);
+    loadActivitySummary();
+  }, [user, startMonth]);
 
   if (!user || loadingMonths || loadingSummary) {
     return (
@@ -157,11 +160,10 @@ export default function CapacitySummary() {
             ))}
             <tr className="bg-gray-100 font-semibold">
               <td className="px-6 py-3">Grand Total</td>
-              {/* {totals.map((val, idx) => (
-                <td key={idx} className="px-6 py-3 text-center">
-                  {fmt(val)}
-                </td>
-              ))} */}
+              {reportMonths.map((m) => {
+                const monthTotal = rows.reduce((sum, r) => sum + (r.months?.[m] || 0), 0);
+                return (<td key={m} className="px-6 py-3 text-center text-gray-700">{fmt(monthTotal)}</td>);
+              })}
             </tr>
           </tbody>
         </>

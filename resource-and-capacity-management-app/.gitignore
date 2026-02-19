@@ -1,0 +1,8 @@
+# Next.js build output
+.next/
+out/
+build/
+
+# Production env files
+.env.production
+.env.local

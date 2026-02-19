@@ -18,7 +18,6 @@ export const getActivitySummary = async (req, res) => {
 
     if (!start) {
       const allocMonths = await allocationCol.distinct("date");
-
       allocMonths.sort((a, b) => a - b);
 
       const today = new Date();
@@ -80,12 +79,14 @@ export const getActivitySummary = async (req, res) => {
 
       // Initialize all months with 0
       targetMonths.forEach((m) => {
-        monthMap[Number(m)] = 0;
+        const label = formatMonthLabel(m);
+        monthMap[label] = 0;
       });
 
       // Fill actual values
       row.monthlyTotals.forEach((m) => {
-        monthMap[Number(m.date)] = m.amount;
+        const label = formatMonthLabel(m.date);
+        monthMap[label] = m.amount;
       });
 
       return {
@@ -94,8 +95,10 @@ export const getActivitySummary = async (req, res) => {
       };
     });
 
+    const formattedMonths = targetMonths.map(m => formatMonthLabel(m));
+
     res.status(200).json({
-      months: targetMonths,
+      months: formattedMonths,
       data: result,
     });
   } catch (err) {
