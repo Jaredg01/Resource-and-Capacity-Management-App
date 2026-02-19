@@ -129,44 +129,33 @@ export default function CapacitySummary() {
      CONDITIONAL TABLE RENDERING
   --------------------------------------------------------- */
   function renderTableBody() {
-    
     // ACTIVITY ALLOCATION VIEW
     if (viewMode === "total") {
       return (
-        <>
-          <thead className="bg-[#017ACB] text-white">
-            <tr>
-              <th className="px-6 py-3 text-left font-semibold">Row Labels</th>
+        <tbody>
+          {rows.map((row, idx) => (
+            <tr key={row.activity} className={idx % 2 === 0 ? "bg-gray-50" : "bg-white"}>
+              <td className="px-6 py-3 font-medium text-gray-800">{row.activity}</td>
 
-              {reportMonths.map((month) => (
-                <th key={month} className="px-6 py-3 text-center font-semibold">
-                  {month}
-                </th>
+              {reportMonths.map((m) => (
+                <td key={m} className="px-6 py-3 text-center text-gray-700">
+                  {fmt(row.months?.[m])}
+                </td>
               ))}
             </tr>
-          </thead>
-
-          <tbody>
-            {rows.map((row, idx) => (
-              <tr key={row.activity} className={idx % 2 === 0 ? "bg-gray-50" : "bg-white"}>
-                <td className="px-6 py-3 font-medium text-gray-800">{row.activity}</td>
-
-                {reportMonths.map((m) => (
-                  <td key={m} className="px-6 py-3 text-center text-gray-700">
-                    {fmt(row.months?.[m])}
-                  </td>
-                ))}
-              </tr>
-            ))}
-            <tr className="bg-gray-100 font-semibold">
-              <td className="px-6 py-3">Grand Total</td>
-              {reportMonths.map((m) => {
-                const monthTotal = rows.reduce((sum, r) => sum + (r.months?.[m] || 0), 0);
-                return (<td key={m} className="px-6 py-3 text-center text-gray-700">{fmt(monthTotal)}</td>);
-              })}
-            </tr>
-          </tbody>
-        </>
+          ))}
+          <tr className="bg-gray-100 font-semibold">
+            <td className="px-6 py-3">Grand Total</td>
+            {reportMonths.map((m) => {
+              const monthTotal = rows.reduce((sum, r) => sum + (r.months?.[m] || 0), 0);
+              return (
+                <td key={m} className="px-6 py-3 text-center text-gray-700">
+                  {fmt(monthTotal)}
+                </td>
+              );
+            })}
+          </tr>
+        </tbody>
       );
     }
 
@@ -188,60 +177,46 @@ export default function CapacitySummary() {
 
     // DEFAULT MONTH VIEW
     return (
-      <>
-        <thead className="bg-[#017ACB] text-white">
-          <tr>
-            <th className="px-6 py-3 text-left font-semibold">Row Labels</th>
+      <tbody className="divide-y">
+        {categories.map((cat, idx) => (
+          <tr key={cat.label} className={idx % 2 === 0 ? "bg-gray-50" : "bg-white"}>
+            <td className="px-6 py-3 font-medium text-gray-800">{cat.label}</td>
 
-            {months.map((month) => (
-              <th key={month} className="px-6 py-3 text-center font-semibold">
-                {month}
-              </th>
+            {cat.values.map((val, i) => (
+              <td key={i} className="px-6 py-3 text-center text-gray-700">
+                {fmt(val)}
+              </td>
             ))}
           </tr>
-        </thead>
+        ))}
 
-        <tbody className="divide-y">
-          {categories.map((cat, idx) => (
-            <tr key={cat.label} className={idx % 2 === 0 ? "bg-gray-50" : "bg-white"}>
-              <td className="px-6 py-3 font-medium text-gray-800">{cat.label}</td>
-
-              {cat.values.map((val, i) => (
-                <td key={i} className="px-6 py-3 text-center text-gray-700">
-                  {fmt(val)}
-                </td>
-              ))}
-            </tr>
+        <tr className="bg-gray-100 font-semibold">
+          <td className="px-6 py-3">Total Allocated</td>
+          {totals.map((val, idx) => (
+            <td key={idx} className="px-6 py-3 text-center">
+              {fmt(val)}
+            </td>
           ))}
+        </tr>
 
-          <tr className="bg-gray-100 font-semibold">
-            <td className="px-6 py-3">Total Allocated</td>
-            {totals.map((val, idx) => (
-              <td key={idx} className="px-6 py-3 text-center">
-                {fmt(val)}
-              </td>
-            ))}
-          </tr>
+        <tr className="bg-gray-50">
+          <td className="px-6 py-3 font-semibold">Total People Capacity</td>
+          {peopleCapacity.map((val, idx) => (
+            <td key={idx} className="px-6 py-3 text-center">
+              {fmt(val)}
+            </td>
+          ))}
+        </tr>
 
-          <tr className="bg-gray-50">
-            <td className="px-6 py-3 font-semibold">Total People Capacity</td>
-            {peopleCapacity.map((val, idx) => (
-              <td key={idx} className="px-6 py-3 text-center">
-                {fmt(val)}
-              </td>
-            ))}
-          </tr>
-
-          <tr className="bg-gray-50">
-            <td className="px-6 py-3 font-semibold">Remaining Capacity</td>
-            {remainingCapacity.map((val, idx) => (
-              <td key={idx} className="px-6 py-3 text-center">
-                {fmt(val)}
-              </td>
-            ))}
-          </tr>
-        </tbody>
-      </>
+        <tr className="bg-gray-50">
+          <td className="px-6 py-3 font-semibold">Remaining Capacity</td>
+          {remainingCapacity.map((val, idx) => (
+            <td key={idx} className="px-6 py-3 text-center">
+              {fmt(val)}
+            </td>
+          ))}
+        </tr>
+      </tbody>
     );
   }
 
@@ -308,7 +283,20 @@ export default function CapacitySummary() {
         {/* TABLE */}
         <div className="bg-white rounded-xl shadow-md border overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">{renderTableBody()}</table>
+            <table className="min-w-full text-sm">
+              <thead className="bg-[#017ACB] text-white">
+                <tr>
+                  <th className="px-6 py-3 text-left font-semibold">Row Labels</th>
+
+                  {months.map((month) => (
+                    <th key={month} className="px-6 py-3 text-center font-semibold">
+                      {month}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              {renderTableBody()}
+            </table>
           </div>
         </div>
       </main>
