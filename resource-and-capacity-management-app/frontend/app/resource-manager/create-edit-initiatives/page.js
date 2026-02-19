@@ -285,7 +285,7 @@ const base =
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
@@ -435,23 +435,25 @@ return (
     <div className="border rounded-lg shadow-sm bg-white overflow-hidden">
       <div className="overflow-x-auto overflow-y-auto max-h-[70vh]">
         <table className="min-w-max w-full border-collapse">
-          <thead className="bg-[#017ACB] text-white sticky top-0 z-10">
-            <tr>
+          <thead className="bg-[#017ACB] text-white">
+            <tr className="sticky top-0 z-[100] bg-[#017ACB]">
 
-              {/* EDIT COLUMN (safe — no data mutation here) */}
-              <th
-                className="
-                  sticky left-0 z-40
-                  bg-[#017ACB]
-                  px-4 py-2
-                  text-sm font-semibold
-                  whitespace-nowrap
-                  align-middle
-                "
-                style={styles.outfitFont}
-              >
-                Edit
-              </th>
+            {/* EDIT HEADER — sticky, blue preserved */}
+            <th
+              className="
+                         sticky left-0 top-0
+                                z-[9999]
+                                bg-[#017ACB] bg-opacity-100
+                                px-4 py-2
+                                text-sm font-semibold
+                                whitespace-nowrap
+                                align-middle
+                                [background-clip:padding-box]
+              "
+              style={styles.outfitFont}
+            >
+              Edit
+            </th>
 
               {/* PROJECT COLUMN (sorting + filtering only) */}
               <th

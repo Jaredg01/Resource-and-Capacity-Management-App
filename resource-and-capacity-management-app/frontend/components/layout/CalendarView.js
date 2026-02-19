@@ -331,8 +331,8 @@ export default function CalendarView() {
   ------------------------------------------------------------------------- */
   if (loadingUser || loadingMonths || loadingCalendar) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
   }
@@ -547,12 +547,18 @@ return (
         ----------------------------------------------------- */}
         {showSelector && selectedMonths.length > 0 && (
           <div
-            className={`
-              absolute top-0 w-md border border-black rounded-lg bg-white shadow p-4 z-9999
-              min-h-96
-              ${shake ? 'animate-[shake_0.15s_ease-in-out]' : ''}
-            `}
-            style={{ left: 'calc(50% + 380px)' }}
+          className={`
+            absolute top-0
+            w-[20rem]                 /* default = laptop */
+            [@media(min-width:1400px)]:w-[22rem]   /* real monitors */
+            [@media(min-width:1700px)]:w-[26rem]   /* large monitors */
+            [@media(min-width:2000px)]:w-[28rem]   /* ultra-wide */
+            max-w-[90vw]
+            border border-black rounded-lg bg-white shadow p-4 z-9999
+            min-h-96
+            ${shake ? 'animate-[shake_0.15s_ease-in-out]' : ''}
+          `}
+          style={{ left: 'calc(50% + 360px)' }}
           >
             <style>
               {`
