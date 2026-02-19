@@ -106,3 +106,20 @@ export const getActivitySummary = async (req, res) => {
     res.status(500).json({ error: "Fail to load activity allocation summary" });
   }
 };
+
+// Get Leaders
+export const getLeaders = async (req, res) => {
+  try {
+    const db = await connectDB();
+
+    const leaders = await db
+      .collection("assignment")
+      .distinct("leader");
+
+    return res.json({ leaders });
+
+  } catch (error) {
+    console.error("get-leaders error:", error);
+    return res.status(500).json({ error: "Server error" });
+  }
+};

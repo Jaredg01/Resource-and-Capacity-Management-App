@@ -33,6 +33,15 @@ export default function CapacitySummary() {
   const [loadingMonths, setLoadingMonths] = useState(true);
   const [loadingSummary, setLoadingSummary] = useState(true);
 
+  const [activityCategory, setActivityCategory] = useState([]);
+  const [leader, setLeader] = useState([]);
+  const [requestingDept, setRequestingDept] = useState("all");
+  const [requestor, setRequestor] = useState("all");
+
+  const [leaderList, setLeaderList] = useState([]);
+  const [deptList, setDeptList] = useState([]);
+  const [requestorList, setRequestorList] = useState([]);
+
   /* ---------------------------------------------------------
      LOAD USER
   --------------------------------------------------------- */
@@ -114,7 +123,15 @@ export default function CapacitySummary() {
       setRows(data.data || []);
     }
 
+    // Get leaders
+    async function loadLeaders() {
+      const res = await api.get("/reports/leaders");
+      const data = res?.data || {};
+      setLeaderList(data.leaders || []);
+    }
+
     loadActivitySummary();
+    loadLeaders();
   }, [user, startMonth]);
 
   if (!user || loadingMonths || loadingSummary) {
@@ -277,6 +294,72 @@ export default function CapacitySummary() {
             <button className="bg-[#017ACB] text-white px-5 py-2 rounded-md shadow hover:bg-[#015f9c] transition">
               Export CSV
             </button>
+          </div>
+        </div>
+
+        {/**
+         * FILTERS
+         * Disabled for viewMode person and month
+         * Available for total viewMode to filter by activity category, leader, requesting dept, and requestor
+         */}
+        <div className={`flex items-center gap-6 mb-6 ${viewMode !== "total" ? "opacity-50 pointer-events-none" : ""}`}>
+          <div>
+            <label className="text-sm font-medium text-gray-700">Activity Category:</label>
+            <select
+              value={activityCategory}
+              onChange={(e) => setActivityCategory(e.target.value)}
+              className="border rounded-md px-3 py-2 text-sm bg-white hover:bg-gray-50 transition"
+            >
+              <option value="vacation">Vacation</option>
+              <option value="baseline">Baseline</option>
+              <option value="strategic">Strategic</option>
+              <option value="discretionary">Discretionary Project / Enhancement</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-gray-700">Leader:</label>
+            <select
+              value={leader}
+              onChange={(e) => setLeader(e.target.value)}
+              className="border rounded-md px-3 py-2 text-sm bg-white hover:bg-gray-50 transition"
+            >
+              {leaderList.map((m) => (
+                <option key={m.value} value={m.value}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-gray-700">Requesting Dept:</label>
+            <select
+              value={requestingDept}
+              onChange={(e) => setRequestingDept(e.target.value)}
+              className="border rounded-md px-3 py-2 text-sm bg-white hover:bg-gray-50 transition"
+            >
+              {deptList.map((m) => (
+                <option key={m.value} value={m.value}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-gray-700">Requestor:</label>
+            <select
+              value={requestor}
+              onChange={(e) => setRequestor(e.target.value)}
+              className="border rounded-md px-3 py-2 text-sm bg-white hover:bg-gray-50 transition"
+            >
+              {requestorList.map((m) => (
+                <option key={m.value} value={m.value}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
