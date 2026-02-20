@@ -114,19 +114,38 @@ export default function CapacitySummary() {
     if (!user || !startMonth) return;
 
     async function loadActivitySummary() {
-      const res = await api.get(`/reports?start=${encodeURIComponent(startMonth)}&months=6`);
-      const data = res?.data || {};
+      // const res = await api.get(`/reports?start=${encodeURIComponent(startMonth)}&months=6`);
+      // const data = res?.data || {};
 
-      console.log("Activity Summary Data:", data.months);
+      // console.log("Activity Summary Data:", data.months);
 
-      setReportMonths(data.months || []);
-      setRows(data.data || []);
+      // setReportMonths(data.months || []);
+      // setRows(data.data || []);
+
+      const params = new URLSearchParams({
+        start: startMonth,
+        months: 6,
+        category: activityCategory,
+        leader: leader,
+        dept: requestingDept,
+        requestor: requestor,
+      });
+
+      console.log("Fetching summary with params:", params.toString());
+
+      try {
+        const res = await api.get(`/reports?${params.toString()}`);
+        setRows(res.data.data || []);
+        setReportMonths(res.data.months || []);
+      } catch (err) {
+        console.error("Failed to fetch report data");
+      }
     }
 
-    // Get leaders
-    async function loadLeaders() {
-      const res = await api.get("/reports/leaders");
-      console.log("Leaders API raw response:", res.data);
+    // Get filters
+    async function loadFilters() {
+      const res = await api.get("/reports/filters");
+      console.log("Filters API raw response:", res.data);
       const data = res?.data || {};
 
       setLeaderList(data.leaders || []);
@@ -135,8 +154,8 @@ export default function CapacitySummary() {
     }
 
     loadActivitySummary();
-    loadLeaders();
-  }, [user, startMonth]);
+    loadFilters();
+  }, [user, startMonth, activityCategory, leader, requestingDept, requestor]);
 
   if (!user || loadingMonths || loadingSummary) {
     return (
@@ -156,21 +175,21 @@ export default function CapacitySummary() {
         <tbody>
           {rows.map((row, idx) => (
             <tr key={row.activity} className={idx % 2 === 0 ? "bg-gray-50" : "bg-white"}>
-              <td className="px-6 py-3 font-medium text-gray-800">{row.activity}</td>
+              <td className="px-6 py-3 font-medium border border-black">{row.activity}</td>
 
               {reportMonths.map((m) => (
-                <td key={m} className="px-6 py-3 text-center text-gray-700">
+                <td key={m} className="px-6 py-3 text-center text-gray-700 border border-black">
                   {fmt(row.months?.[m])}
                 </td>
               ))}
             </tr>
           ))}
           <tr className="bg-gray-100 font-semibold">
-            <td className="px-6 py-3">Grand Total</td>
+            <td className="px-6 py-3 border border-black">Grand Total</td>
             {reportMonths.map((m) => {
               const monthTotal = rows.reduce((sum, r) => sum + (r.months?.[m] || 0), 0);
               return (
-                <td key={m} className="px-6 py-3 text-center text-gray-700">
+                <td key={m} className="px-6 py-3 text-center text-gray-700 border border-black">
                   {fmt(monthTotal)}
                 </td>
               );
@@ -185,9 +204,9 @@ export default function CapacitySummary() {
       return (
         <tbody>
           <tr className="bg-gray-50 font-semibold">
-            <td className="px-6 py-3">Total People Capacity</td>
+            <td className="px-6 py-3 border border-black">Total People Capacity</td>
             {peopleCapacity.map((val, idx) => (
-              <td key={idx} className="px-6 py-3 text-center">
+              <td key={idx} className="px-6 py-3 text-center border border-black">
                 {fmt(val)}
               </td>
             ))}
@@ -201,10 +220,10 @@ export default function CapacitySummary() {
       <tbody className="divide-y">
         {categories.map((cat, idx) => (
           <tr key={cat.label} className={idx % 2 === 0 ? "bg-gray-50" : "bg-white"}>
-            <td className="px-6 py-3 font-medium text-gray-800">{cat.label}</td>
+            <td className="px-6 py-3 border border-black font-medium">{cat.label}</td>
 
             {cat.values.map((val, i) => (
-              <td key={i} className="px-6 py-3 text-center text-gray-700">
+              <td key={i} className="px-6 py-3 text-center border border-black">
                 {fmt(val)}
               </td>
             ))}
@@ -212,27 +231,27 @@ export default function CapacitySummary() {
         ))}
 
         <tr className="bg-gray-100 font-semibold">
-          <td className="px-6 py-3">Total Allocated</td>
+          <td className="px-6 py-3 border border-black">Total Allocated</td>
           {totals.map((val, idx) => (
-            <td key={idx} className="px-6 py-3 text-center">
+            <td key={idx} className="px-6 py-3 text-center border border-black">
               {fmt(val)}
             </td>
           ))}
         </tr>
 
         <tr className="bg-gray-50">
-          <td className="px-6 py-3 font-semibold">Total People Capacity</td>
+          <td className="px-6 py-3 border border-black font-semibold">Total People Capacity</td>
           {peopleCapacity.map((val, idx) => (
-            <td key={idx} className="px-6 py-3 text-center">
+            <td key={idx} className="px-6 py-3 text-center border border-black">
               {fmt(val)}
             </td>
           ))}
         </tr>
 
         <tr className="bg-gray-50">
-          <td className="px-6 py-3 font-semibold">Remaining Capacity</td>
+          <td className="px-6 py-3 border border-black font-semibold">Remaining Capacity</td>
           {remainingCapacity.map((val, idx) => (
-            <td key={idx} className="px-6 py-3 text-center">
+            <td key={idx} className="px-6 py-3 text-center border border-black">
               {fmt(val)}
             </td>
           ))}
@@ -320,10 +339,10 @@ export default function CapacitySummary() {
               className="border rounded-md px-3 py-2 text-sm bg-white hover:bg-gray-50 w-full transition"
             >
               <option value="all">All</option>
-              <option value="vacation">Vacation</option>
-              <option value="baseline">Baseline</option>
-              <option value="strategic">Strategic</option>
-              <option value="discretionary">Discretionary Project / Enhancement</option>
+              <option value="Vacation">Vacation</option>
+              <option value="Baseline">Baseline</option>
+              <option value="Strategic">Strategic</option>
+              <option value="Discretionary Project / Enhancement">Discretionary Project / Enhancement</option>
             </select>
           </div>
 
@@ -380,15 +399,15 @@ export default function CapacitySummary() {
         </div>
 
         {/* TABLE */}
-        <div className="bg-white rounded-xl shadow-md border overflow-hidden">
+        <div className="bg-white rounded-xl shadow-md border border-black overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
+            <table className="min-w-full text-sm border-collapse border border-black">
               <thead className="bg-[#017ACB] text-white">
                 <tr>
-                  <th className="px-6 py-3 text-left font-semibold">Row Labels</th>
+                  <th className="px-6 py-3 text-left font-semibold border border-black">Row Labels</th>
 
                   {months.map((month) => (
-                    <th key={month} className="px-6 py-3 text-center font-semibold">
+                    <th key={month} className="px-6 py-3 text-center font-semibold border border-black">
                       {month}
                     </th>
                   ))}

@@ -1,12 +1,12 @@
 import express from "express";
-import { getActivitySummary, getLeaders } from "../controllers/reportsController.js";
+import { getActivitySummary, getActivityFilters } from "../controllers/reportsController.js";
 
 const router = express.Router();
 
 // Activity allocation summary overview
 router.get("/", getActivitySummary);
 
-// Get Leaders
-router.get("/leaders", getLeaders);
+// Get Filters for activity summary (leaders, requestors, departments)
+router.get("/filters", getActivityFilters);
 
 export default router;

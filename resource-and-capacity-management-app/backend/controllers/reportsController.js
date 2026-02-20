@@ -5,16 +5,10 @@ import { formatMonthLabel, computeMonthWindow } from "./capacitySummaryControlle
 export const getActivitySummary = async (req, res) => {
   try {
     const db = await connectDB();
-
-    const startParam = req.query.start;
-    const monthsParam = req.query.months;
-
-    const startMonth = startParam ? parseInt(startParam, 10) : null;
-    const monthsWindow = monthsParam ? parseInt(monthsParam, 10) : 6;
-
     const allocationCol = db.collection("allocation");
+    const { start, months, category, leader, dept, requestor } = req.query;
 
-    let start = startMonth;
+    const monthsWindow = months ? parseInt(months, 10) : 6;
 
     if (!start) {
       const allocMonths = await allocationCol.distinct("date");
@@ -35,6 +29,29 @@ export const getActivitySummary = async (req, res) => {
         $match: {
           date: { $in: targetMonths },
         },
+      },
+      {
+        // Join with the assignment collection
+        $lookup: {
+          from: "assignment",
+          localField: "activity",
+          foreignField: "project_name",
+          as: "projectDetails",
+        },
+      },
+      { $unwind: { path: "$projectDetails", preserveNullAndEmptyArrays: true }, },
+      {
+        // Apply the filters from the dropdowns
+        $match: {
+          $and: [
+            category && category !== "all" 
+              ? { "projectDetails.category": { $regex: new RegExp(`^${category}$`, "i") } } 
+              : {},
+            leader && leader !== "all" ? { "projectDetails.leader": leader } : {},
+            dept && dept !== "all" ? { "projectDetails.requesting_dept": dept } : {},
+            requestor && requestor !== "all" ? { "projectDetails.requestor": requestor } : {},
+          ].filter(obj => Object.keys(obj).length > 0)
+        }
       },
       {
         // Sum amount per activity per month
@@ -72,6 +89,10 @@ export const getActivitySummary = async (req, res) => {
       },
     ];
 
+    if (pipeline[3].$match.$and.length === 0) {
+      pipeline.splice(3, 1);
+    }
+
     const rawData = await allocationCol.aggregate(pipeline).toArray();
 
     const result = rawData.map((row) => {
@@ -107,8 +128,8 @@ export const getActivitySummary = async (req, res) => {
   }
 };
 
-// Get Leaders
-export const getLeaders = async (req, res) => {
+// Get Activity Filters
+export const getActivityFilters = async (req, res) => {
   try {
     const db = await connectDB();
 
