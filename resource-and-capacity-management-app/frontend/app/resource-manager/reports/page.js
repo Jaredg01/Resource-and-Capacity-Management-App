@@ -344,81 +344,79 @@ export default function CapacitySummary() {
 
         {/**
          * FILTERS
-         * Disabled for viewMode person and month
          * Available for activity viewMode to filter by activity category, leader, requesting dept, and requestor
          */}
-        <div
-          className={`flex flex-col md:flex-row flex-wrap gap-4 mb-6 ${
-            viewMode !== "activity" ? "opacity-50 pointer-events-none" : ""
-          }`}
-        >
-          {/* Activity Category */}
-          <div className="flex-1 min-w-[200px]">
-            <label className="text-sm font-medium text-gray-700 mb-1 block">Activity Category:</label>
-            <select
-              value={activityCategory}
-              onChange={(e) => setActivityCategory(e.target.value)}
-              className="border rounded-md px-3 py-2 text-sm bg-white hover:bg-gray-50 w-full transition"
-            >
-              <option value="all">All</option>
-              <option value="Vacation">Vacation</option>
-              <option value="Baseline">Baseline</option>
-              <option value="Strategic">Strategic</option>
-              <option value="Discretionary Project / Enhancement">Discretionary Project / Enhancement</option>
-            </select>
-          </div>
+        {viewMode === "activity" && (
+          <div className="flex flex-col md:flex-row flex-wrap gap-4 mb-6">
+            
+            {/* Activity Category options */}
+            <div className="flex-1 min-w-[200px]">
+              <label className="text-sm font-medium text-gray-700 mb-1 block">Activity Category:</label>
+              <select
+                value={activityCategory}
+                onChange={(e) => setActivityCategory(e.target.value)}
+                className="border rounded-md px-3 py-2 text-sm bg-white hover:bg-gray-50 w-full transition"
+              >
+                <option value="all">All</option>
+                <option value="Vacation">Vacation</option>
+                <option value="Baseline">Baseline</option>
+                <option value="Strategic">Strategic</option>
+                <option value="Discretionary Project / Enhancement">Discretionary Project / Enhancement</option>
+              </select>
+            </div>
 
-          {/* Leader */}
-          <div className="flex-1 min-w-[200px]">
-            <label className="text-sm font-medium text-gray-700 mb-1 block">Leader:</label>
-            <select
-              value={leader}
-              onChange={(e) => setLeader(e.target.value)}
-              className="border rounded-md px-3 py-2 text-sm bg-white hover:bg-gray-50 w-full transition"
-            >
-              <option value="all">All</option>
-              {leaderList.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
-          </div>
+            {/* Leader options */}
+            <div className="flex-1 min-w-[200px]">
+              <label className="text-sm font-medium text-gray-700 mb-1 block">Leader:</label>
+              <select
+                value={leader}
+                onChange={(e) => setLeader(e.target.value)}
+                className="border rounded-md px-3 py-2 text-sm bg-white hover:bg-gray-50 w-full transition"
+              >
+                <option value="all">All</option>
+                {leaderList.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          {/* Requesting Dept */}
-          <div className="flex-1 min-w-[200px]">
-            <label className="text-sm font-medium text-gray-700 mb-1 block">Requesting Dept:</label>
-            <select
-              value={requestingDept}
-              onChange={(e) => setRequestingDept(e.target.value)}
-              className="border rounded-md px-3 py-2 text-sm bg-white hover:bg-gray-50 w-full transition"
-            >
-              <option value="all">All</option>
-              {deptList.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
-          </div>
+            {/* Requesting Dept options */}
+            <div className="flex-1 min-w-[200px]">
+              <label className="text-sm font-medium text-gray-700 mb-1 block">Requesting Dept:</label>
+              <select
+                value={requestingDept}
+                onChange={(e) => setRequestingDept(e.target.value)}
+                className="border rounded-md px-3 py-2 text-sm bg-white hover:bg-gray-50 w-full transition"
+              >
+                <option value="all">All</option>
+                {deptList.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          {/* Requestor */}
-          <div className="flex-1 min-w-[200px]">
-            <label className="text-sm font-medium text-gray-700 mb-1 block">Requestor:</label>
-            <select
-              value={requestor}
-              onChange={(e) => setRequestor(e.target.value)}
-              className="border rounded-md px-3 py-2 text-sm bg-white hover:bg-gray-50 w-full transition"
-            >
-              <option value="all">All</option>
-              {requestorList.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
+            {/* Requestor options */}
+            <div className="flex-1 min-w-[200px]">
+              <label className="text-sm font-medium text-gray-700 mb-1 block">Requestor:</label>
+              <select
+                value={requestor}
+                onChange={(e) => setRequestor(e.target.value)}
+                className="border rounded-md px-3 py-2 text-sm bg-white hover:bg-gray-50 w-full transition"
+              >
+                <option value="all">All</option>
+                {requestorList.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* TABLE */}
         <div className="bg-white rounded-xl shadow-md border border-black overflow-hidden">
