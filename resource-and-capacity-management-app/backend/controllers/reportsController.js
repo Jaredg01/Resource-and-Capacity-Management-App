@@ -23,15 +23,16 @@ export const getActivitySummary = async (req, res) => {
 
     const targetMonths = computeMonthWindow(start, monthsWindow);
 
-    const pipeline = [
+    const pipeline = [];
+
+    const initialMatch = { date: { $in: targetMonths } };
+    if (category && category !== "all") {
+      initialMatch.category = category; 
+    }
+    pipeline.push({ $match: initialMatch });
+
+    pipeline.push(
       {
-        // Only include target months
-        $match: {
-          date: { $in: targetMonths },
-        },
-      },
-      {
-        // Join with the assignment collection
         $lookup: {
           from: "assignment",
           localField: "activity",
@@ -39,59 +40,47 @@ export const getActivitySummary = async (req, res) => {
           as: "projectDetails",
         },
       },
-      { $unwind: { path: "$projectDetails", preserveNullAndEmptyArrays: true }, },
       {
-        // Apply the filters from the dropdowns
-        $match: {
-          $and: [
-            category && category !== "all" 
-              ? { "projectDetails.category": { $regex: new RegExp(`^${category}$`, "i") } } 
-              : {},
-            leader && leader !== "all" ? { "projectDetails.leader": leader } : {},
-            dept && dept !== "all" ? { "projectDetails.requesting_dept": dept } : {},
-            requestor && requestor !== "all" ? { "projectDetails.requestor": requestor } : {},
-          ].filter(obj => Object.keys(obj).length > 0)
-        }
-      },
+        $unwind: {
+          path: "$projectDetails",
+          preserveNullAndEmptyArrays: true,
+        },
+      }
+    );
+
+    const assignmentFilters = {};
+    if (leader && leader !== "all") assignmentFilters["projectDetails.leader"] = leader;
+    if (dept && dept !== "all") assignmentFilters["projectDetails.requesting_dept"] = dept;
+    if (requestor && requestor !== "all") assignmentFilters["projectDetails.requestor"] = requestor;
+
+    if (Object.keys(assignmentFilters).length > 0) {
+      pipeline.push({ $match: assignmentFilters });
+    }
+
+    pipeline.push(
       {
-        // Sum amount per activity per month
         $group: {
-          _id: {
-            activity: "$activity",
-            date: "$date",
-          },
+          _id: { activity: "$activity", date: "$date" },
           totalAmount: { $sum: "$amount" },
         },
       },
       {
-        // Group again by activity
         $group: {
           _id: "$_id.activity",
           monthlyTotals: {
-            $push: {
-              date: "$_id.date",
-              amount: "$totalAmount",
-            },
+            $push: { date: "$_id.date", amount: "$totalAmount" },
           },
         },
       },
       {
-        // Clean shape
         $project: {
           _id: 0,
           activity: "$_id",
           monthlyTotals: 1,
         },
       },
-      {
-        // Sort activities alphabetically
-        $sort: { activity: 1 },
-      },
-    ];
-
-    if (pipeline[3].$match.$and.length === 0) {
-      pipeline.splice(3, 1);
-    }
+      { $sort: { activity: 1 } }
+    );
 
     const rawData = await allocationCol.aggregate(pipeline).toArray();
 

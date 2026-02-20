@@ -95,7 +95,6 @@ export default function CapacitySummary() {
         const res = await api.get(`/capacity-summary?start=${encodeURIComponent(startMonth)}&months=6`);
 
         const data = res?.data || {};
-        console.log("Capacity Summary Data:", data.months);
 
         setMonths(data.months || []);
         setCategories(data.categories || []);
@@ -114,14 +113,6 @@ export default function CapacitySummary() {
     if (!user || !startMonth) return;
 
     async function loadActivitySummary() {
-      // const res = await api.get(`/reports?start=${encodeURIComponent(startMonth)}&months=6`);
-      // const data = res?.data || {};
-
-      // console.log("Activity Summary Data:", data.months);
-
-      // setReportMonths(data.months || []);
-      // setRows(data.data || []);
-
       const params = new URLSearchParams({
         start: startMonth,
         months: 6,
@@ -130,8 +121,6 @@ export default function CapacitySummary() {
         dept: requestingDept,
         requestor: requestor,
       });
-
-      console.log("Fetching summary with params:", params.toString());
 
       try {
         const res = await api.get(`/reports?${params.toString()}`);
@@ -145,7 +134,6 @@ export default function CapacitySummary() {
     // Get filters
     async function loadFilters() {
       const res = await api.get("/reports/filters");
-      console.log("Filters API raw response:", res.data);
       const data = res?.data || {};
 
       setLeaderList(data.leaders || []);
