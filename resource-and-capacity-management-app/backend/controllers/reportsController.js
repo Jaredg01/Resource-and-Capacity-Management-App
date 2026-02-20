@@ -112,14 +112,26 @@ export const getLeaders = async (req, res) => {
   try {
     const db = await connectDB();
 
-    const leaders = await db
-      .collection("assignment")
-      .distinct("leader");
+    const [leaders, requestors, departments] = await Promise.all([
+      db.collection("assignment").distinct("leader", {
+        leader: { $exists: true, $ne: "" }
+      }),
+      db.collection("assignment").distinct("requestor", {
+        requestor: { $exists: true, $ne: "" }
+      }),
+      db.collection("assignment").distinct("requesting_dept", {
+        requesting_dept: { $exists: true, $ne: "" }
+      })
+    ]);
 
-    return res.json({ leaders });
+    return res.json({
+      leaders,
+      requestors,
+      requesting_dept: departments
+    });
 
   } catch (error) {
-    console.error("get-leaders error:", error);
+    console.error("get-assignment-filters error:", error);
     return res.status(500).json({ error: "Server error" });
   }
 };

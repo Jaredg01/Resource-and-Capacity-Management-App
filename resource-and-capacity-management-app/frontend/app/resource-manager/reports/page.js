@@ -1,11 +1,15 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import api from '@/lib/api';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import api from "@/lib/api";
+
+const styles = {
+  outfitFont: { fontFamily: "Outfit, sans-serif" },
+};
 
 function fmt(n) {
-  if (n === null || n === undefined || isNaN(n)) return '0.00';
+  if (n === null || n === undefined || isNaN(n)) return "0.00";
   return Number(n).toFixed(2);
 }
 
@@ -13,58 +17,64 @@ export default function CapacitySummary() {
   const router = useRouter();
 
   const [user, setUser] = useState(null);
-  const [viewMode, setViewMode] = useState('month');
+  const [viewMode, setViewMode] = useState("month");
 
   const [selectableMonths, setSelectableMonths] = useState([]);
   const [startMonth, setStartMonth] = useState(null);
 
   const [months, setMonths] = useState([]);
-
+  const [reportMonths, setReportMonths] = useState([]);
+  const [rows, setRows] = useState([]);
   const [categories, setCategories] = useState([]);
   const [totals, setTotals] = useState([]);
   const [peopleCapacity, setPeopleCapacity] = useState([]);
   const [remainingCapacity, setRemainingCapacity] = useState([]);
 
-  const [activityRows, setActivityRows] = useState([]);
-  const [activityTotals, setActivityTotals] = useState([]);
-
   const [loadingMonths, setLoadingMonths] = useState(true);
   const [loadingSummary, setLoadingSummary] = useState(true);
 
-  /* ================= LOAD USER ================= */
+  const [activityCategory, setActivityCategory] = useState("all");
+  const [leader, setLeader] = useState("all");
+  const [requestingDept, setRequestingDept] = useState("all");
+  const [requestor, setRequestor] = useState("all");
 
+  const [leaderList, setLeaderList] = useState([]);
+  const [deptList, setDeptList] = useState([]);
+  const [requestorList, setRequestorList] = useState([]);
+
+  /* ---------------------------------------------------------
+     LOAD USER
+  --------------------------------------------------------- */
   useEffect(() => {
     try {
-      const stored = localStorage.getItem('user');
+      const stored = localStorage.getItem("user");
       if (stored) setUser(JSON.parse(stored));
     } catch {
-      localStorage.removeItem('user');
-      localStorage.removeItem('token');
+      localStorage.removeItem("user");
+      localStorage.removeItem("token");
     }
   }, []);
 
-  /* ================= LOAD MONTH OPTIONS ================= */
-
+  /* ---------------------------------------------------------
+     LOAD MONTH OPTIONS
+  --------------------------------------------------------- */
   useEffect(() => {
     if (!user) return;
 
     async function loadMonths() {
       try {
-        const res = await api.get('/capacity-summary/months');
+        const res = await api.get("/capacity-summary/months");
         const data = res?.data;
         if (!data?.months) return;
 
         setSelectableMonths(data.months);
 
         const today = new Date();
-        const currentYYYYMM =
-          today.getFullYear() * 100 + (today.getMonth() + 1);
+        const currentYYYYMM = today.getFullYear() * 100 + (today.getMonth() + 1);
 
-        const match = data.months.find(m => m.value === currentYYYYMM);
+        const match = data.months.find((m) => m.value === currentYYYYMM);
 
-        setStartMonth(
-          match ? match.value : data.months[data.months.length - 1].value
-        );
+        setStartMonth(match ? match.value : data.months[data.months.length - 1].value);
       } finally {
         setLoadingMonths(false);
       }
@@ -73,48 +83,60 @@ export default function CapacitySummary() {
     loadMonths();
   }, [user]);
 
-  /* ================= LOAD SUMMARY ================= */
-
+  /* ---------------------------------------------------------
+     LOAD SUMMARY DATA
+  --------------------------------------------------------- */
   useEffect(() => {
     if (!user || !startMonth) return;
 
     async function loadSummary() {
       setLoadingSummary(true);
-
       try {
-        const res = await api.get(
-          /capacity-summary?start=${encodeURIComponent(startMonth)}&months=6&view=${viewMode}
-        );
+        const res = await api.get(`/capacity-summary?start=${encodeURIComponent(startMonth)}&months=6`);
 
         const data = res?.data || {};
+        console.log("Capacity Summary Data:", data.months);
 
         setMonths(data.months || []);
-
-        if (viewMode === 'activity') {
-          setActivityRows(data.rows || []);
-          setActivityTotals(data.grandTotals || []);
-
-          setCategories([]);
-          setTotals([]);
-          setPeopleCapacity([]);
-          setRemainingCapacity([]);
-        } else {
-          setCategories(data.categories || []);
-          setTotals(data.totals || []);
-          setPeopleCapacity(data.peopleCapacity || []);
-          setRemainingCapacity(data.remainingCapacity || []);
-
-          setActivityRows([]);
-          setActivityTotals([]);
-        }
-
+        setCategories(data.categories || []);
+        setTotals(data.totals || []);
+        setPeopleCapacity(data.peopleCapacity || []);
+        setRemainingCapacity(data.remainingCapacity || []);
       } finally {
         setLoadingSummary(false);
       }
     }
 
     loadSummary();
-  }, [user, startMonth, viewMode]);
+  }, [user, startMonth]);
+
+  useEffect(() => {
+    if (!user || !startMonth) return;
+
+    async function loadActivitySummary() {
+      const res = await api.get(`/reports?start=${encodeURIComponent(startMonth)}&months=6`);
+      const data = res?.data || {};
+
+      console.log("Activity Summary Data:", data.months);
+
+      setReportMonths(data.months || []);
+      setRows(data.data || []);
+    }
+
+    // Get leaders
+    async function loadLeaders() {
+      const res = await api.get("/reports/leaders");
+      console.log("Leaders API raw response:", res.data);
+      const data = res?.data || {};
+
+      setLeaderList(data.leaders || []);
+      setRequestorList(data.requestors || []);
+      setDeptList(data.requesting_dept || []);
+    }
+
+    loadActivitySummary();
+    loadLeaders();
+  }, [user, startMonth]);
 
   if (!user || loadingMonths || loadingSummary) {
     return (
@@ -124,39 +146,48 @@ export default function CapacitySummary() {
     );
   }
 
-  /* ================= TABLE BODY ================= */
-
+  /* ---------------------------------------------------------
+     CONDITIONAL TABLE RENDERING
+  --------------------------------------------------------- */
   function renderTableBody() {
-
-    if (viewMode === 'activity') {
+    // ACTIVITY ALLOCATION VIEW
+    if (viewMode === "total") {
       return (
         <tbody>
-          {activityRows.map((row, idx) => (
-            <tr key={row.label}>
-              <td className="px-6 py-3 border border-black font-medium">
-                {row.label}
-              </td>
+          {rows.map((row, idx) => (
+            <tr key={row.activity} className={idx % 2 === 0 ? "bg-gray-50" : "bg-white"}>
+              <td className="px-6 py-3 font-medium text-gray-800">{row.activity}</td>
 
-              {row.values.map((val, i) => (
-                <td
-                  key={i}
-                  className="px-6 py-3 text-center border border-black"
-                >
-                  {fmt(val)}
+              {reportMonths.map((m) => (
+                <td key={m} className="px-6 py-3 text-center text-gray-700">
+                  {fmt(row.months?.[m])}
                 </td>
               ))}
             </tr>
           ))}
+          <tr className="bg-gray-100 font-semibold">
+            <td className="px-6 py-3">Grand Total</td>
+            {reportMonths.map((m) => {
+              const monthTotal = rows.reduce((sum, r) => sum + (r.months?.[m] || 0), 0);
+              return (
+                <td key={m} className="px-6 py-3 text-center text-gray-700">
+                  {fmt(monthTotal)}
+                </td>
+              );
+            })}
+          </tr>
+        </tbody>
+      );
+    }
 
-          <tr className="font-semibold bg-gray-100">
-            <td className="px-6 py-3 border border-black">
-              Grand Total
-            </td>
-            {activityTotals.map((val, idx) => (
-              <td
-                key={idx}
-                className="px-6 py-3 text-center border border-black"
-              >
+    // PERSON VIEW
+    if (viewMode === "person") {
+      return (
+        <tbody>
+          <tr className="bg-gray-50 font-semibold">
+            <td className="px-6 py-3">Total People Capacity</td>
+            {peopleCapacity.map((val, idx) => (
+              <td key={idx} className="px-6 py-3 text-center">
                 {fmt(val)}
               </td>
             ))}
@@ -165,62 +196,43 @@ export default function CapacitySummary() {
       );
     }
 
+    // DEFAULT MONTH VIEW
     return (
-      <tbody>
+      <tbody className="divide-y">
         {categories.map((cat, idx) => (
-          <tr key={cat.label}>
-            <td className="px-6 py-3 border border-black font-medium">
-              {cat.label}
-            </td>
+          <tr key={cat.label} className={idx % 2 === 0 ? "bg-gray-50" : "bg-white"}>
+            <td className="px-6 py-3 font-medium text-gray-800">{cat.label}</td>
 
             {cat.values.map((val, i) => (
-              <td
-                key={i}
-                className="px-6 py-3 text-center border border-black"
-              >
+              <td key={i} className="px-6 py-3 text-center text-gray-700">
                 {fmt(val)}
               </td>
             ))}
           </tr>
         ))}
 
-        <tr className="font-semibold bg-gray-100">
-          <td className="px-6 py-3 border border-black">
-            Total Allocated
-          </td>
+        <tr className="bg-gray-100 font-semibold">
+          <td className="px-6 py-3">Total Allocated</td>
           {totals.map((val, idx) => (
-            <td
-              key={idx}
-              className="px-6 py-3 text-center border border-black"
-            >
+            <td key={idx} className="px-6 py-3 text-center">
               {fmt(val)}
             </td>
           ))}
         </tr>
 
-        <tr>
-          <td className="px-6 py-3 border border-black font-semibold">
-            Total People Capacity
-          </td>
+        <tr className="bg-gray-50">
+          <td className="px-6 py-3 font-semibold">Total People Capacity</td>
           {peopleCapacity.map((val, idx) => (
-            <td
-              key={idx}
-              className="px-6 py-3 text-center border border-black"
-            >
+            <td key={idx} className="px-6 py-3 text-center">
               {fmt(val)}
             </td>
           ))}
         </tr>
 
-        <tr>
-          <td className="px-6 py-3 border border-black font-semibold">
-            Remaining Capacity
-          </td>
+        <tr className="bg-gray-50">
+          <td className="px-6 py-3 font-semibold">Remaining Capacity</td>
           {remainingCapacity.map((val, idx) => (
-            <td
-              key={idx}
-              className="px-6 py-3 text-center border border-black"
-            >
+            <td key={idx} className="px-6 py-3 text-center">
               {fmt(val)}
             </td>
           ))}
@@ -229,16 +241,16 @@ export default function CapacitySummary() {
     );
   }
 
-  /* ================= RENDER ================= */
-
+  /* ---------------------------------------------------------
+     FINAL RENDER
+  --------------------------------------------------------- */
   return (
     <div className="w-full bg-gray-50">
       <main className="max-w-7xl mx-auto px-6 py-8">
-
+        {/* HEADER */}
         <div className="flex items-center justify-between mb-8">
-
           <div className="flex items-center gap-4">
-            <h2 className="text-3xl font-bold">
+            <h2 className="text-3xl font-bold text-gray-900" style={styles.outfitFont}>
               Capacity Report
             </h2>
 
@@ -251,32 +263,29 @@ export default function CapacitySummary() {
           </div>
 
           <div className="flex items-center gap-6">
-
+            {/* VIEW DROPDOWN */}
             <div className="flex items-center gap-2">
-              <label className="text-sm font-medium">
-                View:
-              </label>
+              <label className="text-sm font-medium text-gray-700">View:</label>
 
               <select
                 value={viewMode}
                 onChange={(e) => setViewMode(e.target.value)}
-                className="border border-black rounded-md px-3 py-2 text-sm bg-white"
+                className="border rounded-md px-3 py-2 text-sm bg-white hover:bg-gray-50 transition"
               >
                 <option value="month">Allocation per Month</option>
-                <option value="activity">Allocation by Activity</option>
                 <option value="person">Allocation per Person</option>
+                <option value="total">Allocation by Activity</option>
               </select>
             </div>
 
+            {/* START MONTH */}
             <div className="flex items-center gap-2">
-              <label className="text-sm font-medium">
-                Start Month:
-              </label>
+              <label className="text-sm font-medium text-gray-700">Start Month:</label>
 
               <select
                 value={startMonth}
                 onChange={(e) => setStartMonth(Number(e.target.value))}
-                className="border border-black rounded-md px-3 py-2 text-sm bg-white"
+                className="border rounded-md px-3 py-2 text-sm bg-white hover:bg-gray-50 transition"
               >
                 {selectableMonths.map((m) => (
                   <option key={m.value} value={m.value}>
@@ -289,38 +298,106 @@ export default function CapacitySummary() {
             <button className="bg-[#017ACB] text-white px-5 py-2 rounded-md shadow hover:bg-[#015f9c] transition">
               Export CSV
             </button>
-
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-md border border-black overflow-hidden">
+        {/**
+         * FILTERS
+         * Disabled for viewMode person and month
+         * Available for total viewMode to filter by activity category, leader, requesting dept, and requestor
+         */}
+        <div
+          className={`flex flex-col md:flex-row flex-wrap gap-4 mb-6 ${
+            viewMode !== "total" ? "opacity-50 pointer-events-none" : ""
+          }`}
+        >
+          {/* Activity Category */}
+          <div className="flex-1 min-w-[200px]">
+            <label className="text-sm font-medium text-gray-700 mb-1 block">Activity Category:</label>
+            <select
+              value={activityCategory}
+              onChange={(e) => setActivityCategory(e.target.value)}
+              className="border rounded-md px-3 py-2 text-sm bg-white hover:bg-gray-50 w-full transition"
+            >
+              <option value="all">All</option>
+              <option value="vacation">Vacation</option>
+              <option value="baseline">Baseline</option>
+              <option value="strategic">Strategic</option>
+              <option value="discretionary">Discretionary Project / Enhancement</option>
+            </select>
+          </div>
 
+          {/* Leader */}
+          <div className="flex-1 min-w-[200px]">
+            <label className="text-sm font-medium text-gray-700 mb-1 block">Leader:</label>
+            <select
+              value={leader}
+              onChange={(e) => setLeader(e.target.value)}
+              className="border rounded-md px-3 py-2 text-sm bg-white hover:bg-gray-50 w-full transition"
+            >
+              <option value="all">All</option>
+              {leaderList.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Requesting Dept */}
+          <div className="flex-1 min-w-[200px]">
+            <label className="text-sm font-medium text-gray-700 mb-1 block">Requesting Dept:</label>
+            <select
+              value={requestingDept}
+              onChange={(e) => setRequestingDept(e.target.value)}
+              className="border rounded-md px-3 py-2 text-sm bg-white hover:bg-gray-50 w-full transition"
+            >
+              <option value="all">All</option>
+              {deptList.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Requestor */}
+          <div className="flex-1 min-w-[200px]">
+            <label className="text-sm font-medium text-gray-700 mb-1 block">Requestor:</label>
+            <select
+              value={requestor}
+              onChange={(e) => setRequestor(e.target.value)}
+              className="border rounded-md px-3 py-2 text-sm bg-white hover:bg-gray-50 w-full transition"
+            >
+              <option value="all">All</option>
+              {requestorList.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* TABLE */}
+        <div className="bg-white rounded-xl shadow-md border overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full text-sm border-collapse border border-black">
-
+            <table className="min-w-full text-sm">
               <thead className="bg-[#017ACB] text-white">
                 <tr>
-                  <th className="px-6 py-3 text-left font-semibold border border-black">
-                    {viewMode === 'activity' ? 'Activity' : 'Category'}
-                  </th>
+                  <th className="px-6 py-3 text-left font-semibold">Row Labels</th>
 
                   {months.map((month) => (
-                    <th
-                      key={month}
-                      className="px-6 py-3 text-center font-semibold border border-black"
-                    >
+                    <th key={month} className="px-6 py-3 text-center font-semibold">
                       {month}
                     </th>
                   ))}
                 </tr>
               </thead>
-
               {renderTableBody()}
-
             </table>
           </div>
         </div>
-
       </main>
     </div>
   );
