@@ -42,6 +42,8 @@ export default function CapacitySummary() {
   const [deptList, setDeptList] = useState([]);
   const [requestorList, setRequestorList] = useState([]);
 
+  const [employees, setEmployees] = useState([]);
+
   /* ---------------------------------------------------------
      LOAD USER
   --------------------------------------------------------- */
@@ -112,6 +114,24 @@ export default function CapacitySummary() {
   useEffect(() => {
     if (!user || !startMonth) return;
 
+    async function loadCapacity() {
+      try {
+        const res = await api.get(`/reports/capacity?start=${encodeURIComponent(startMonth)}&months=6`);
+        const data = res?.data || {};
+
+        setReportMonths(data.months || []);
+        setEmployees(data.data || []);
+      } catch (error) {
+        console.error("Error fetching capacity:", error);
+      }
+    }
+
+    loadCapacity();
+  }, [user, startMonth]);
+
+  useEffect(() => {
+    if (!user || !startMonth) return;
+
     async function loadActivitySummary() {
       const params = new URLSearchParams({
         start: startMonth,
@@ -158,7 +178,7 @@ export default function CapacitySummary() {
   --------------------------------------------------------- */
   function renderTableBody() {
     // ACTIVITY ALLOCATION VIEW
-    if (viewMode === "total") {
+    if (viewMode === "activity") {
       return (
         <tbody>
           {rows.map((row, idx) => (
@@ -191,13 +211,27 @@ export default function CapacitySummary() {
     if (viewMode === "person") {
       return (
         <tbody>
-          <tr className="bg-gray-50 font-semibold">
-            <td className="px-6 py-3 border border-black">Total People Capacity</td>
-            {peopleCapacity.map((val, idx) => (
-              <td key={idx} className="px-6 py-3 text-center border border-black">
-                {fmt(val)}
-              </td>
-            ))}
+          {employees.map((emp, idx) => (
+            <tr key={emp.emp_name} className={idx % 2 === 0 ? "bg-gray-50" : "bg-white"}>
+              <td className="px-6 py-3 font-medium border border-black">{emp.emp_name}</td>
+
+              {reportMonths.map((m) => (
+                <td key={m} className="px-6 py-3 text-center text-gray-700 border border-black">
+                  {fmt(emp.months?.[m])}
+                </td>
+              ))}
+            </tr>
+          ))}
+          <tr className="bg-gray-100 font-semibold">
+            <td className="px-6 py-3 border border-black">Grand Total</td>
+            {reportMonths.map((m) => {
+              const monthTotal = employees.reduce((sum, r) => sum + (r.months?.[m] || 0), 0);
+              return (
+                <td key={m} className="px-6 py-3 text-center text-gray-700 border border-black">
+                  {fmt(monthTotal)}
+                </td>
+              );
+            })}
           </tr>
         </tbody>
       );
@@ -281,7 +315,7 @@ export default function CapacitySummary() {
               >
                 <option value="month">Allocation per Month</option>
                 <option value="person">Allocation per Person</option>
-                <option value="total">Allocation by Activity</option>
+                <option value="activity">Allocation by Activity</option>
               </select>
             </div>
 
@@ -311,11 +345,11 @@ export default function CapacitySummary() {
         {/**
          * FILTERS
          * Disabled for viewMode person and month
-         * Available for total viewMode to filter by activity category, leader, requesting dept, and requestor
+         * Available for activity viewMode to filter by activity category, leader, requesting dept, and requestor
          */}
         <div
           className={`flex flex-col md:flex-row flex-wrap gap-4 mb-6 ${
-            viewMode !== "total" ? "opacity-50 pointer-events-none" : ""
+            viewMode !== "activity" ? "opacity-50 pointer-events-none" : ""
           }`}
         >
           {/* Activity Category */}

@@ -1,5 +1,5 @@
 import express from "express";
-import { getActivitySummary, getActivityFilters } from "../controllers/reportsController.js";
+import { getActivitySummary, getActivityFilters, getEmployeeCapacity } from "../controllers/reportsController.js";
 
 const router = express.Router();
 
@@ -8,5 +8,8 @@ router.get("/", getActivitySummary);
 
 // Get Filters for activity summary (leaders, requestors, departments)
 router.get("/filters", getActivityFilters);
+
+// Get Employee Capacity Summary
+router.get("/capacity", getEmployeeCapacity);
 
 export default router;

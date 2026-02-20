@@ -1,7 +1,6 @@
 import { connectDB } from "../config/db.js";
 import { formatMonthLabel, computeMonthWindow } from "./capacitySummaryController.js";
 
-
 export const getActivitySummary = async (req, res) => {
   try {
     const db = await connectDB();
@@ -27,7 +26,7 @@ export const getActivitySummary = async (req, res) => {
 
     const initialMatch = { date: { $in: targetMonths } };
     if (category && category !== "all") {
-      initialMatch.category = category; 
+      initialMatch.category = category;
     }
     pipeline.push({ $match: initialMatch });
 
@@ -45,7 +44,7 @@ export const getActivitySummary = async (req, res) => {
           path: "$projectDetails",
           preserveNullAndEmptyArrays: true,
         },
-      }
+      },
     );
 
     const assignmentFilters = {};
@@ -79,7 +78,7 @@ export const getActivitySummary = async (req, res) => {
           monthlyTotals: 1,
         },
       },
-      { $sort: { activity: 1 } }
+      { $sort: { activity: 1 } },
     );
 
     const rawData = await allocationCol.aggregate(pipeline).toArray();
@@ -105,7 +104,7 @@ export const getActivitySummary = async (req, res) => {
       };
     });
 
-    const formattedMonths = targetMonths.map(m => formatMonthLabel(m));
+    const formattedMonths = targetMonths.map((m) => formatMonthLabel(m));
 
     res.status(200).json({
       months: formattedMonths,
@@ -124,24 +123,98 @@ export const getActivityFilters = async (req, res) => {
 
     const [leaders, requestors, departments] = await Promise.all([
       db.collection("assignment").distinct("leader", {
-        leader: { $exists: true, $ne: "" }
+        leader: { $exists: true, $ne: "" },
       }),
       db.collection("assignment").distinct("requestor", {
-        requestor: { $exists: true, $ne: "" }
+        requestor: { $exists: true, $ne: "" },
       }),
       db.collection("assignment").distinct("requesting_dept", {
-        requesting_dept: { $exists: true, $ne: "" }
-      })
+        requesting_dept: { $exists: true, $ne: "" },
+      }),
     ]);
 
     return res.json({
       leaders,
       requestors,
-      requesting_dept: departments
+      requesting_dept: departments,
     });
-
   } catch (error) {
     console.error("get-assignment-filters error:", error);
     return res.status(500).json({ error: "Server error" });
+  }
+};
+
+export const getEmployeeCapacity = async (req, res) => {
+  try {
+    const db = await connectDB();
+    const startParam = req.query.start;
+    const monthsParam = req.query.months;
+
+    const startMonth = startParam ? parseInt(startParam, 10) : 202501;
+    const monthsWindow = monthsParam ? parseInt(monthsParam, 10) : 6;
+    const targetMonths = computeMonthWindow(startMonth, monthsWindow);
+
+    const pipeline = [
+      {
+        $lookup: {
+          from: "capacity",
+          let: { empId: "$emp_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [{ $eq: ["$emp_id", "$$empId"] }, { $in: ["$date", targetMonths] }],
+                },
+              },
+            },
+          ],
+          as: "monthlyData",
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          emp_name: 1,
+          emp_id: 1,
+          capacities: {
+            $map: {
+              input: "$monthlyData",
+              as: "cap",
+              in: {
+                date: "$$cap.date",
+                amount: "$$cap.amount",
+              },
+            },
+          },
+        },
+      },
+      { $sort: { emp_name: 1 } },
+    ];
+
+    const employeesRaw = await db.collection("employee").aggregate(pipeline).toArray();
+
+    const result = employeesRaw.map((emp) => {
+      const monthMap = {};
+      // Initialize target months to 0
+      targetMonths.forEach((m) => {
+        monthMap[formatMonthLabel(m)] = 0;
+      });
+      // Fill actual capacity values
+      emp.capacities.forEach((c) => {
+        monthMap[formatMonthLabel(c.date)] = c.amount;
+      });
+
+      return {
+        emp_name: emp.emp_name,
+        months: monthMap,
+      };
+    });
+
+    res.status(200).json({
+      months: targetMonths.map((m) => formatMonthLabel(m)),
+      data: result,
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to load capacity data" });
   }
 };
