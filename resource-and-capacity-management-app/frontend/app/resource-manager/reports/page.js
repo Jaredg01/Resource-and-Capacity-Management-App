@@ -306,8 +306,11 @@ export default function CapacitySummary() {
             </h2>
 
             <button
-              onClick={() => router.back()}
-              className="px-4 py-2 text-sm bg-white border rounded-md hover:bg-[#017ACB]/10 transition"
+              onClick={() => router.push('/resource-manager/dashboard')}
+              className="px-4 py-2 rounded text-sm bg-gray-200 text-gray-700 border hover:bg-[#017ACB]/20 transition-colors 
+              shadow-[inset_2px_2px_0_rgba(255,255,255,1),inset_-2px_-2px_0_rgba(0,0,0,0.32)]
+              active:shadow-[inset_2px_2px_0_rgba(255,255,255,1),inset_-2px_-2px_0_rgba(0,0,0,0.32)]"
+              style={styles.outfitFont}
             >
               Back to Dashboard
             </button>
@@ -321,7 +324,10 @@ export default function CapacitySummary() {
               <select
                 value={viewMode}
                 onChange={(e) => setViewMode(e.target.value)}
-                className="border rounded-md px-3 py-2 text-sm bg-white hover:bg-gray-50 transition"
+                className="px-3 py-2 rounded text-sm bg-gray-200 text-gray-700 border hover:bg-[#017ACB]/20 transition-colors 
+                shadow-[inset_2px_2px_0_rgba(255,255,255,1),inset_-2px_-2px_0_rgba(0,0,0,0.32)]
+                active:shadow-[inset_2px_2px_0_rgba(255,255,255,1),inset_-2px_-2px_0_rgba(0,0,0,0.32)]"
+                style={styles.outfitFont}
               >
                 <option value="month">Allocation per Category</option>
                 <option value="person">Allocation per Person</option>
@@ -330,7 +336,10 @@ export default function CapacitySummary() {
             </div>
 
             {/* START MONTH */}
-            <div className="flex items-center gap-2">
+            <div className="px-3 py-1 rounded text-sm bg-gray-200 text-gray-700 border hover:bg-[#017ACB]/20 transition-colors 
+              shadow-[inset_2px_2px_0_rgba(255,255,255,1),inset_-2px_-2px_0_rgba(0,0,0,0.32)]
+              active:shadow-[inset_2px_2px_0_rgba(255,255,255,1),inset_-2px_-2px_0_rgba(0,0,0,0.32)]"
+              style={styles.outfitFont}>
               <label className="text-sm font-medium text-gray-700">Start Month:</label>
 
               <select
@@ -346,7 +355,8 @@ export default function CapacitySummary() {
               </select>
             </div>
 
-            <button className="bg-[#017ACB] text-white px-5 py-2 rounded-md shadow hover:bg-[#015f9c] transition">
+            <button className="bg-[#017ACB] text-white px-5 py-2 rounded-md shadow hover:bg-[#015f9c] transition shadow-[inset_2px_2px_0_rgba(255,255,255,1),inset_-2px_-2px_0_rgba(0,0,0,0.32)]
+              active:shadow-[inset_2px_2px_0_rgba(255,255,255,1),inset_-2px_-2px_0_rgba(0,0,0,0.32)]">
               Export CSV
             </button>
           </div>
@@ -451,3 +461,4 @@ export default function CapacitySummary() {
     </div>
   );
 }
+
