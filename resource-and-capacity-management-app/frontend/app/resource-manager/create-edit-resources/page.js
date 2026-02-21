@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createPortal } from "react-dom";
@@ -9,27 +9,24 @@ const styles = {
   outfitFont: { fontFamily: "Outfit, sans-serif" },
 };
 
-const generateMonths = (startDate, count) => {
-  const result = [];
-  const start = new Date(startDate);
-  start.setDate(1);
-
-  for (let i = 0; i < count; i++) {
-    const d = new Date(start);
-    d.setMonth(start.getMonth() + i);
-
-    result.push({
-      key: d.getFullYear() * 100 + (d.getMonth() + 1),
-      label: d.toLocaleString("en-US", {
-        month: "short",
-        year: "2-digit",
-      }),
-      date: d,
-    });
-  }
-
-  return result;
-};
+const MONTHS = [
+  { key: 202501, label: "Jan-25" },
+  { key: 202502, label: "Feb-25" },
+  { key: 202503, label: "Mar-25" },
+  { key: 202504, label: "Apr-25" },
+  { key: 202505, label: "May-25" },
+  { key: 202506, label: "Jun-25" },
+  { key: 202507, label: "Jul-25" },
+  { key: 202508, label: "Aug-25" },
+  { key: 202509, label: "Sep-25" },
+  { key: 202510, label: "Oct-25" },
+  { key: 202511, label: "Nov-25" },
+  { key: 202512, label: "Dec-25" },
+  { key: 202601, label: "Jan-26" },
+  { key: 202602, label: "Feb-26" },
+  { key: 202603, label: "Mar-26" },
+  { key: 202604, label: "Apr-26" },
+];
 
 const DEPARTMENT_FILTER_NAME = "Data Mgmt";
 
@@ -80,16 +77,6 @@ export default function ResourcesPage() {
   const [editingCell, setEditingCell] = useState(null);
   const [editingValue, setEditingValue] = useState("");
 
-  const [startMonth, setStartMonth] = useState(() => {
-    const d = new Date();
-    d.setDate(1);
-    return d;
-  });
-
-  const [months, setMonths] = useState([]);
-  const [showStartMonthMenu, setShowStartMonthMenu] = useState(false);
-  const startMonthRef = useRef(null);
-
   // -------------------------------------------------------
   // USER LOAD
   // -------------------------------------------------------
@@ -118,7 +105,6 @@ export default function ResourcesPage() {
       setShowTitleMenu(false);
       setShowReportsToMenu(false);
       setShowCurrentStatusMenu(false);
-      setShowStartMonthMenu(false);
     };
     window.addEventListener("click", handleClickOutside);
     return () => window.removeEventListener("click", handleClickOutside);
@@ -127,10 +113,6 @@ export default function ResourcesPage() {
   // -------------------------------------------------------
   // FETCH ALL DATA
   // -------------------------------------------------------
-  useEffect(() => {
-    setMonths(generateMonths(startMonth, 12));
-  }, [startMonth]);
-
   useEffect(() => {
     fetchAllData();
   }, []);
@@ -156,7 +138,9 @@ export default function ResourcesPage() {
       const employeesWithCap = await Promise.all(
         (Array.isArray(empData) ? empData : []).map(async (emp) => {
           try {
-            const capRes = await fetch(`${apiUrl}/api/resources/employees/${emp.emp_id}/capacity`);
+            const capRes = await fetch(
+              `${apiUrl}/api/resources/employees/${emp.emp_id}/capacity`
+            );
             if (!capRes.ok) {
               return { ...emp, capacity: {} };
             }
@@ -173,29 +157,44 @@ export default function ResourcesPage() {
           } catch {
             return { ...emp, capacity: {} };
           }
-        }),
+        })
       );
 
       const dataMgmt = employeesWithCap.filter((emp) => {
         const dept = deptData.find((d) => d.dept_no === emp.dept_no);
-        return dept && dept.dept_name.toLowerCase() === DEPARTMENT_FILTER_NAME.toLowerCase();
+        return (
+          dept &&
+          dept.dept_name.toLowerCase() === DEPARTMENT_FILTER_NAME.toLowerCase()
+        );
       });
 
       setAllEmployeesWithCapacity(employeesWithCap);
       setEmployeesWithCapacity(dataMgmt);
       setEmployees(dataMgmt);
 
-      setAvailableNames([...new Set(dataMgmt.map((e) => e.emp_name).filter(Boolean))]);
+      setAvailableNames([
+        ...new Set(dataMgmt.map((e) => e.emp_name).filter(Boolean)),
+      ]);
 
-      setAvailableTitles([...new Set(dataMgmt.map((e) => e.emp_title).filter(Boolean))]);
+      setAvailableTitles([
+        ...new Set(dataMgmt.map((e) => e.emp_title).filter(Boolean)),
+      ]);
 
       const getReportsToNameFromList = (id) => {
         if (!id && id !== 0) return null;
-        const match = employeesWithCap.find((e) => String(e.emp_id) === String(id));
+        const match = employeesWithCap.find(
+          (e) => String(e.emp_id) === String(id)
+        );
         return match ? match.emp_name : null;
       };
 
-      setAvailableReportsTo([...new Set(dataMgmt.map((e) => getReportsToNameFromList(e.reports_to)).filter(Boolean))]);
+      setAvailableReportsTo([
+        ...new Set(
+          dataMgmt
+            .map((e) => getReportsToNameFromList(e.reports_to))
+            .filter(Boolean)
+        ),
+      ]);
 
       const getCurrentStatusLocal = (emp) => {
         const now = new Date();
@@ -203,7 +202,11 @@ export default function ResourcesPage() {
         return emp.capacity?.[key]?.status || "Active";
       };
 
-      setAvailableCurrentStatuses([...new Set(dataMgmt.map((e) => getCurrentStatusLocal(e)).filter(Boolean))]);
+      setAvailableCurrentStatuses([
+        ...new Set(
+          dataMgmt.map((e) => getCurrentStatusLocal(e)).filter(Boolean)
+        ),
+      ]);
 
       setError("");
     } catch (err) {
@@ -213,40 +216,24 @@ export default function ResourcesPage() {
     }
   };
 
-  const buildStartMonthOptions = (centerDate, monthsBefore = 12, monthsAfter = 12) => {
-    const options = [];
-    const year = centerDate.getFullYear();
-    const month = centerDate.getMonth();
-
-    for (let offset = -monthsBefore; offset <= monthsAfter; offset++) {
-      const d = new Date(year, month + offset, 1);
-      options.push({
-        key: d.getFullYear() * 100 + (d.getMonth() + 1),
-        label: d.toLocaleString("en-US", { month: "short", year: "2-digit" }),
-        date: d,
-      });
-    }
-
-    return options;
-  };
-
-  const startMonthOptions = buildStartMonthOptions(new Date());
-  const handleStartMonthSelect = (month) => {
-    setStartMonth(new Date(month.date.getFullYear(), month.date.getMonth(), 1));
-    setShowStartMonthMenu(false);
-  };
-
   // -------------------------------------------------------
   // HELPERS
   // -------------------------------------------------------
   const toggleSelection = (value, setFn, current) => {
-    setFn(current.includes(value) ? current.filter((v) => v !== value) : [...current, value]);
+    setFn(
+      current.includes(value)
+        ? current.filter((v) => v !== value)
+        : [...current, value]
+    );
   };
 
-  const getDepartmentName = (deptNo) => departments.find((d) => d.dept_no === deptNo)?.dept_name || deptNo;
+  const getDepartmentName = (deptNo) =>
+    departments.find((d) => d.dept_no === deptNo)?.dept_name || deptNo;
 
   const getReportsToName = (emp) => {
-    const match = allEmployeesWithCapacity.find((e) => String(e.emp_id) === String(emp.reports_to));
+    const match = allEmployeesWithCapacity.find(
+      (e) => String(e.emp_id) === String(emp.reports_to)
+    );
     return match ? match.emp_name : "-";
   };
 
@@ -262,7 +249,8 @@ export default function ResourcesPage() {
     return emp.capacity?.[key]?.status || "Active";
   };
 
-  const getMonthValue = (emp, key) => (emp.capacity && emp.capacity[key] ? emp.capacity[key].amount : "");
+  const getMonthValue = (emp, key) =>
+    emp.capacity && emp.capacity[key] ? emp.capacity[key].amount : 1;
 
   const startEditMonth = (emp, key) => {
     setEditingCell({ empId: emp.emp_id, monthKey: key });
@@ -293,11 +281,14 @@ export default function ResourcesPage() {
     ];
 
     try {
-      const res = await fetch(`${apiUrl}/api/resources/employees/${emp.emp_id}/capacity`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ updates }),
-      });
+      const res = await fetch(
+        `${apiUrl}/api/resources/employees/${emp.emp_id}/capacity`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ updates }),
+        }
+      );
 
       if (!res.ok) {
         throw new Error("Unable to update capacity");
@@ -316,8 +307,8 @@ export default function ResourcesPage() {
                   },
                 },
               }
-            : e,
-        ),
+            : e
+        )
       );
 
       setError("");
@@ -349,7 +340,7 @@ export default function ResourcesPage() {
           {menu}
         </div>
       </>,
-      document.body,
+      document.body
     );
   };
 
@@ -360,24 +351,35 @@ export default function ResourcesPage() {
     let filtered = [...employeesWithCapacity];
 
     if (activeFilter === "mine" && user) {
-      filtered = filtered.filter((emp) => String(emp.emp_id) === String(user.emp_id));
+      filtered = filtered.filter(
+        (emp) => String(emp.emp_id) === String(user.emp_id)
+      );
     }
 
     if (statusFilter !== "all") {
       filtered = filtered.filter((emp) => {
         const status = getCurrentStatus(emp);
-        return statusFilter === "active" ? status === "Active" : status === "Inactive";
+        return statusFilter === "active"
+          ? status === "Active"
+          : status === "Inactive";
       });
     }
 
     if (searchTerm) {
       const t = searchTerm.toLowerCase();
-      filtered = filtered.filter((e) => e.emp_name.toLowerCase().includes(t) || e.emp_title.toLowerCase().includes(t));
+      filtered = filtered.filter(
+        (e) =>
+          e.emp_name.toLowerCase().includes(t) ||
+          e.emp_title.toLowerCase().includes(t)
+      );
     }
 
-    const deptName = (no) => departments.find((d) => d.dept_no === no)?.dept_name || "";
+    const deptName = (no) =>
+      departments.find((d) => d.dept_no === no)?.dept_name || "";
 
-    filtered = filtered.filter((e) => deptName(e.dept_no).toLowerCase() === "data mgmt");
+    filtered = filtered.filter(
+      (e) => deptName(e.dept_no).toLowerCase() === "data mgmt"
+    );
 
     if (selectedNames.length > 0) {
       filtered = filtered.filter((e) => selectedNames.includes(e.emp_name));
@@ -388,11 +390,15 @@ export default function ResourcesPage() {
     }
 
     if (selectedReportsTo.length > 0) {
-      filtered = filtered.filter((e) => selectedReportsTo.includes(getReportsToName(e)));
+      filtered = filtered.filter((e) =>
+        selectedReportsTo.includes(getReportsToName(e))
+      );
     }
 
     if (selectedCurrentStatuses.length > 0) {
-      filtered = filtered.filter((e) => selectedCurrentStatuses.includes(getCurrentStatus(e)));
+      filtered = filtered.filter((e) =>
+        selectedCurrentStatuses.includes(getCurrentStatus(e))
+      );
     }
 
     if (nameSort === "az") {
@@ -431,12 +437,15 @@ export default function ResourcesPage() {
   // RENDER
   // -------------------------------------------------------
   return (
-    <div className="min-h-screen bg-white p-6">
+    <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-full mx-auto">
         {/* Title + Create + Back */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
-            <h2 className="text-2xl font-bold text-gray-900" style={styles.outfitFont}>
+            <h2
+              className="text-2xl font-bold text-gray-900"
+              style={styles.outfitFont}
+            >
               Resources
             </h2>
 
@@ -462,7 +471,10 @@ export default function ResourcesPage() {
         {error && (
           <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
             {error}
-            <button onClick={() => setError("")} className="ml-4 text-red-900 font-bold">
+            <button
+              onClick={() => setError("")}
+              className="ml-4 text-red-900 font-bold"
+            >
               ×
             </button>
           </div>
@@ -475,7 +487,9 @@ export default function ResourcesPage() {
               <button
                 onClick={() => setActiveFilter("all")}
                 className={`p-2 w-16 border border-gray-300 text-center cursor-pointer text-sm ${
-                  activeFilter === "all" ? "bg-[#017ACB] text-white" : "text-gray-600 bg-white"
+                  activeFilter === "all"
+                    ? "bg-[#017ACB] text-white"
+                    : "text-gray-600 bg-white"
                 }`}
                 style={styles.outfitFont}
               >
@@ -485,7 +499,9 @@ export default function ResourcesPage() {
               <button
                 onClick={() => setActiveFilter("mine")}
                 className={`p-2 w-16 border border-gray-300 text-center cursor-pointer text-sm ${
-                  activeFilter === "mine" ? "bg-[#017ACB] text-white" : "text-gray-600 bg-white"
+                  activeFilter === "mine"
+                    ? "bg-[#017ACB] text-white"
+                    : "text-gray-600 bg-white"
                 }`}
                 style={styles.outfitFont}
               >
@@ -540,7 +556,8 @@ export default function ResourcesPage() {
                         <div className="bg-white text-black shadow-lg rounded w-56 max-h-64 overflow-y-auto border border-gray-200">
                           <div
                             className={`px-3 py-2 cursor-pointer text-sm hover:bg-gray-200 flex items-center gap-2 ${
-                              selectedNames.length === 0 || selectedNames.length === availableNames.length
+                              selectedNames.length === 0 ||
+                              selectedNames.length === availableNames.length
                                 ? "bg-gray-100 font-semibold"
                                 : ""
                             }`}
@@ -548,7 +565,10 @@ export default function ResourcesPage() {
                           >
                             <input
                               type="checkbox"
-                              checked={selectedNames.length === 0 || selectedNames.length === availableNames.length}
+                              checked={
+                                selectedNames.length === 0 ||
+                                selectedNames.length === availableNames.length
+                              }
                               readOnly
                             />
                             All
@@ -556,7 +576,9 @@ export default function ResourcesPage() {
 
                           <div
                             className={`px-3 py-2 cursor-pointer text-sm hover:bg-gray-200 ${
-                              nameSort === "az" ? "bg-gray-100 font-semibold" : ""
+                              nameSort === "az"
+                                ? "bg-gray-100 font-semibold"
+                                : ""
                             }`}
                             onClick={() => {
                               setNameSort("az");
@@ -568,7 +590,9 @@ export default function ResourcesPage() {
 
                           <div
                             className={`px-3 py-2 cursor-pointer text-sm hover:bg-gray-200 ${
-                              nameSort === "za" ? "bg-gray-100 font-semibold" : ""
+                              nameSort === "za"
+                                ? "bg-gray-100 font-semibold"
+                                : ""
                             }`}
                             onClick={() => {
                               setNameSort("za");
@@ -582,15 +606,27 @@ export default function ResourcesPage() {
                             <div
                               key={name}
                               className={`px-3 py-2 cursor-pointer text-sm hover:bg-gray-200 flex items-center gap-2 ${
-                                selectedNames.includes(name) ? "bg-gray-100 font-semibold" : ""
+                                selectedNames.includes(name)
+                                  ? "bg-gray-100 font-semibold"
+                                  : ""
                               }`}
-                              onClick={() => toggleSelection(name, setSelectedNames, selectedNames)}
+                              onClick={() =>
+                                toggleSelection(
+                                  name,
+                                  setSelectedNames,
+                                  selectedNames
+                                )
+                              }
                             >
-                              <input type="checkbox" checked={selectedNames.includes(name)} readOnly />
+                              <input
+                                type="checkbox"
+                                checked={selectedNames.includes(name)}
+                                readOnly
+                              />
                               {name}
                             </div>
                           ))}
-                        </div>,
+                        </div>
                       )}
                   </th>
 
@@ -619,7 +655,8 @@ export default function ResourcesPage() {
                         <div className="bg-white text-black shadow-lg rounded w-56 max-h-64 overflow-y-auto border border-gray-200">
                           <div
                             className={`px-3 py-2 cursor-pointer text-sm hover:bg-gray-200 flex items-center gap-2 ${
-                              selectedTitles.length === 0 || selectedTitles.length === availableTitles.length
+                              selectedTitles.length === 0 ||
+                              selectedTitles.length === availableTitles.length
                                 ? "bg-gray-100 font-semibold"
                                 : ""
                             }`}
@@ -627,7 +664,10 @@ export default function ResourcesPage() {
                           >
                             <input
                               type="checkbox"
-                              checked={selectedTitles.length === 0 || selectedTitles.length === availableTitles.length}
+                              checked={
+                                selectedTitles.length === 0 ||
+                                selectedTitles.length === availableTitles.length
+                              }
                               readOnly
                             />
                             All
@@ -637,15 +677,27 @@ export default function ResourcesPage() {
                             <div
                               key={title}
                               className={`px-3 py-2 cursor-pointer text-sm hover:bg-gray-200 flex items-center gap-2 ${
-                                selectedTitles.includes(title) ? "bg-gray-100 font-semibold" : ""
+                                selectedTitles.includes(title)
+                                  ? "bg-gray-100 font-semibold"
+                                  : ""
                               }`}
-                              onClick={() => toggleSelection(title, setSelectedTitles, selectedTitles)}
+                              onClick={() =>
+                                toggleSelection(
+                                  title,
+                                  setSelectedTitles,
+                                  selectedTitles
+                                )
+                              }
                             >
-                              <input type="checkbox" checked={selectedTitles.includes(title)} readOnly />
+                              <input
+                                type="checkbox"
+                                checked={selectedTitles.includes(title)}
+                                readOnly
+                              />
                               {title}
                             </div>
                           ))}
-                        </div>,
+                        </div>
                       )}
                   </th>
 
@@ -678,7 +730,9 @@ export default function ResourcesPage() {
                         <div className="bg-white text-black shadow-lg rounded w-56 max-h-64 overflow-y-auto border border-gray-200">
                           <div
                             className={`px-3 py-2 cursor-pointer text-sm hover:bg-gray-200 flex items-center gap-2 ${
-                              selectedReportsTo.length === 0 || selectedReportsTo.length === availableReportsTo.length
+                              selectedReportsTo.length === 0 ||
+                              selectedReportsTo.length ===
+                                availableReportsTo.length
                                 ? "bg-gray-100 font-semibold"
                                 : ""
                             }`}
@@ -687,7 +741,9 @@ export default function ResourcesPage() {
                             <input
                               type="checkbox"
                               checked={
-                                selectedReportsTo.length === 0 || selectedReportsTo.length === availableReportsTo.length
+                                selectedReportsTo.length === 0 ||
+                                selectedReportsTo.length ===
+                                  availableReportsTo.length
                               }
                               readOnly
                             />
@@ -698,15 +754,27 @@ export default function ResourcesPage() {
                             <div
                               key={manager}
                               className={`px-3 py-2 cursor-pointer text-sm hover:bg-gray-200 flex items-center gap-2 ${
-                                selectedReportsTo.includes(manager) ? "bg-gray-100 font-semibold" : ""
+                                selectedReportsTo.includes(manager)
+                                  ? "bg-gray-100 font-semibold"
+                                  : ""
                               }`}
-                              onClick={() => toggleSelection(manager, setSelectedReportsTo, selectedReportsTo)}
+                              onClick={() =>
+                                toggleSelection(
+                                  manager,
+                                  setSelectedReportsTo,
+                                  selectedReportsTo
+                                )
+                              }
                             >
-                              <input type="checkbox" checked={selectedReportsTo.includes(manager)} readOnly />
+                              <input
+                                type="checkbox"
+                                checked={selectedReportsTo.includes(manager)}
+                                readOnly
+                              />
                               {manager}
                             </div>
                           ))}
-                        </div>,
+                        </div>
                       )}
                   </th>
 
@@ -746,7 +814,8 @@ export default function ResourcesPage() {
                           <div
                             className={`px-3 py-2 cursor-pointer text-sm hover:bg-gray-200 flex items-center gap-2 ${
                               selectedCurrentStatuses.length === 0 ||
-                              selectedCurrentStatuses.length === availableCurrentStatuses.length
+                              selectedCurrentStatuses.length ===
+                                availableCurrentStatuses.length
                                 ? "bg-gray-100 font-semibold"
                                 : ""
                             }`}
@@ -756,7 +825,8 @@ export default function ResourcesPage() {
                               type="checkbox"
                               checked={
                                 selectedCurrentStatuses.length === 0 ||
-                                selectedCurrentStatuses.length === availableCurrentStatuses.length
+                                selectedCurrentStatuses.length ===
+                                  availableCurrentStatuses.length
                               }
                               readOnly
                             />
@@ -767,68 +837,38 @@ export default function ResourcesPage() {
                             <div
                               key={status}
                               className={`px-3 py-2 cursor-pointer text-sm hover:bg-gray-200 flex items-center gap-2 ${
-                                selectedCurrentStatuses.includes(status) ? "bg-gray-100 font-semibold" : ""
+                                selectedCurrentStatuses.includes(status)
+                                  ? "bg-gray-100 font-semibold"
+                                  : ""
                               }`}
                               onClick={() =>
-                                toggleSelection(status, setSelectedCurrentStatuses, selectedCurrentStatuses)
+                                toggleSelection(
+                                  status,
+                                  setSelectedCurrentStatuses,
+                                  selectedCurrentStatuses
+                                )
                               }
                             >
-                              <input type="checkbox" checked={selectedCurrentStatuses.includes(status)} readOnly />
+                              <input
+                                type="checkbox"
+                                checked={selectedCurrentStatuses.includes(
+                                  status
+                                )}
+                                readOnly
+                              />
                               {status}
                             </div>
                           ))}
-                        </div>,
+                        </div>
                       )}
                   </th>
 
-                  {months.map((month, index) => (
+                  {MONTHS.map((month) => (
                     <th
                       key={month.key}
                       className="px-2 py-2 text-center font-semibold text-white border-b border-black border-r border-white min-w-[60px]"
                     >
-                      {index === 0 ? (
-                        <div className="flex justify-between items-center">
-                          <span>{month.label}</span>
-
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const rect = e.currentTarget.getBoundingClientRect();
-                              setMenuPosition({ x: rect.left, y: rect.bottom });
-                              setShowStartMonthMenu((prev) => !prev);
-                            }}
-                            className="ml-1 bg-white text-[#017ACB] px-1 py-0.5 rounded text-xs font-bold hover:bg-gray-100 transition"
-                          >
-                            ▼
-                          </button>
-
-                          {showStartMonthMenu &&
-                            renderDropdownPortal(
-                              <div className="bg-white text-black shadow-lg rounded w-40 max-h-64 overflow-y-auto border border-gray-200">
-                                {startMonthOptions.map((m) => {
-                                  const isSelected =
-                                    m.key === startMonth.getFullYear() * 100 + (startMonth.getMonth() + 1);
-                                  const optionRef = isSelected ? (el) => el?.scrollIntoView({ block: "center" }) : null;
-
-                                  return (
-                                    <div
-                                      key={m.key}
-                                      ref={optionRef}
-                                      onClick={() => handleStartMonthSelect(m)}
-                                      className={`px-3 py-2 cursor-pointer text-sm hover:bg-gray-200 ${
-                                        isSelected ? "bg-gray-100 font-semibold" : ""
-                                      }`}
-                                    >
-                                      {m.label}
-                                    </div>
-                                  );
-                                })}
-                              </div>,
-                            )}
-                        </div>
-                      ) : (
-                        month.label
-                      )}
+                      {month.label}
                     </th>
                   ))}
                 </tr>
@@ -838,7 +878,7 @@ export default function ResourcesPage() {
                 {employees.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={9 + months.length}
+                      colSpan={9 + MONTHS.length}
                       className="px-4 py-8 text-center text-black"
                       style={styles.outfitFont}
                     >
@@ -847,7 +887,10 @@ export default function ResourcesPage() {
                   </tr>
                 ) : (
                   employees.map((employee) => (
-                    <tr key={employee.emp_id} className="hover:bg-gray-50 border-b border-black">
+                    <tr
+                      key={employee.emp_id}
+                      className="hover:bg-gray-50 border-b border-black"
+                    >
                       <td className="px-2 py-2 w-16 border-r border-black bg-white">
                         <Link
                           href={`/resource-manager/create-edit-resources/edit-resource?id=${employee.emp_id}`}
@@ -858,25 +901,46 @@ export default function ResourcesPage() {
                         </Link>
                       </td>
 
-                      <td className="px-2 py-2 text-black border-r border-black bg-white" style={styles.outfitFont}>
+                      <td
+                        className="px-2 py-2 text-black border-r border-black bg-white"
+                        style={styles.outfitFont}
+                      >
                         {employee.emp_name}
                       </td>
-                      <td className="px-2 py-2 text-black border-r border-black" style={styles.outfitFont}>
+                      <td
+                        className="px-2 py-2 text-black border-r border-black"
+                        style={styles.outfitFont}
+                      >
                         {employee.emp_title}
                       </td>
-                      <td className="px-2 py-2 text-black border-r border-black" style={styles.outfitFont}>
+                      <td
+                        className="px-2 py-2 text-black border-r border-black"
+                        style={styles.outfitFont}
+                      >
                         {getDepartmentName(employee.dept_no)}
                       </td>
-                      <td className="px-2 py-2 text-black border-r border-black" style={styles.outfitFont}>
+                      <td
+                        className="px-2 py-2 text-black border-r border-black"
+                        style={styles.outfitFont}
+                      >
                         {getReportsToName(employee)}
                       </td>
-                      <td className="px-2 py-2 text-black border-r border-black" style={styles.outfitFont}>
+                      <td
+                        className="px-2 py-2 text-black border-r border-black"
+                        style={styles.outfitFont}
+                      >
                         {getLevelName(employee.manager_level)}
                       </td>
-                      <td className="px-2 py-2 text-black border-r border-black" style={styles.outfitFont}>
+                      <td
+                        className="px-2 py-2 text-black border-r border-black"
+                        style={styles.outfitFont}
+                      >
                         {getLevelName(employee.director_level)}
                       </td>
-                      <td className="px-2 py-2 text-black border-r border-black" style={styles.outfitFont}>
+                      <td
+                        className="px-2 py-2 text-black border-r border-black"
+                        style={styles.outfitFont}
+                      >
                         {employee.other_info || ""}
                       </td>
 
@@ -893,13 +957,14 @@ export default function ResourcesPage() {
                         </span>
                       </td>
 
-                      {months.map((month) => (
+                      {MONTHS.map((month) => (
                         <td
                           key={month.key}
                           className="px-2 py-2 text-center border-r border-black text-black"
                           style={styles.outfitFont}
                         >
-                          {editingCell?.empId === employee.emp_id && editingCell?.monthKey === month.key ? (
+                          {editingCell?.empId === employee.emp_id &&
+                          editingCell?.monthKey === month.key ? (
                             <input
                               type="number"
                               min="0"
@@ -925,7 +990,9 @@ export default function ResourcesPage() {
                           ) : (
                             <button
                               type="button"
-                              onClick={() => startEditMonth(employee, month.key)}
+                              onClick={() =>
+                                startEditMonth(employee, month.key)
+                              }
                               className="w-full text-center hover:bg-gray-100 rounded px-1 py-0.5"
                             >
                               {getMonthValue(employee, month.key)}
@@ -941,7 +1008,10 @@ export default function ResourcesPage() {
           </div>
         </div>
 
-        <div className="mt-4 text-gray-600 text-sm" style={styles.outfitFont}>
+        <div
+          className="mt-4 text-gray-600 text-sm"
+          style={styles.outfitFont}
+        >
           Showing {employees.length} of {employeesWithCapacity.length} employees
         </div>
       </div>
