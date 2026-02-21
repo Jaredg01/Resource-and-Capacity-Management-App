@@ -157,7 +157,7 @@ export const getEmployeeCapacity = async (req, res) => {
     const pipeline = [
       {
         $lookup: {
-          from: "capacity",
+          from: "allocation",
           let: { empId: "$emp_id" },
           pipeline: [
             {
@@ -165,6 +165,12 @@ export const getEmployeeCapacity = async (req, res) => {
                 $expr: {
                   $and: [{ $eq: ["$emp_id", "$$empId"] }, { $in: ["$date", targetMonths] }],
                 },
+              },
+            },
+            {
+              $group: {
+                _id: "$date",
+                totalAmount: { $sum: "$amount" },
               },
             },
           ],
@@ -181,8 +187,8 @@ export const getEmployeeCapacity = async (req, res) => {
               input: "$monthlyData",
               as: "cap",
               in: {
-                date: "$$cap.date",
-                amount: "$$cap.amount",
+                date: "$$cap._id",
+                amount: "$$cap.totalAmount",
               },
             },
           },

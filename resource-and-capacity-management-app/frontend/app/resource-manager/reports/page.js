@@ -215,11 +215,21 @@ export default function CapacitySummary() {
             <tr key={emp.emp_name} className={idx % 2 === 0 ? "bg-gray-200" : "bg-white"}>
               <td className="px-6 py-3 font-medium border border-black">{emp.emp_name}</td>
 
-              {reportMonths.map((m) => (
-                <td key={m} className="px-6 py-3 text-center text-gray-700 border border-black">
-                  {fmt(emp.months?.[m])}
-                </td>
-              ))}
+              {reportMonths.map((m) => {
+                const value = emp.months?.[m] || 0;
+                const isOverCapacity = value > 1;
+
+                return (
+                  <td
+                    key={m}
+                    className={`px-6 py-3 text-center border border-black ${
+                      isOverCapacity ? "bg-red-400 text-white font-bold" : "text-gray-700"
+                    }`}
+                  >
+                    {fmt(emp.months?.[m])}
+                  </td>
+                );
+              })}
             </tr>
           ))}
           <tr className="bg-gray-100 font-semibold">
