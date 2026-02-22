@@ -44,6 +44,82 @@ export default function CapacitySummary() {
 
   const [employees, setEmployees] = useState([]);
 
+  /* ================= EXPORT CSV FUNCTION ================= */
+
+  function handleExportCSV() {
+    const activeMonths =
+      viewMode === "activity" || viewMode === "person"
+        ? reportMonths
+        : months;
+
+    if (!activeMonths.length) return;
+
+    let csv = "";
+
+    // Header
+    csv += `Row Labels,${activeMonths.join(",")}\n`;
+
+    // Activity View
+    if (viewMode === "activity") {
+      rows.forEach((row) => {
+        const values = activeMonths.map((m) =>
+          fmt(row.months?.[m] || 0)
+        );
+        csv += `${row.activity},${values.join(",")}\n`;
+      });
+
+      const grandTotals = activeMonths.map((m) =>
+        fmt(rows.reduce((sum, r) => sum + (r.months?.[m] || 0), 0))
+      );
+
+      csv += `Grand Total,${grandTotals.join(",")}\n`;
+    }
+
+    // Person View
+    else if (viewMode === "person") {
+      employees.forEach((emp) => {
+        const values = activeMonths.map((m) =>
+          fmt(emp.months?.[m] || 0)
+        );
+        csv += `${emp.emp_name},${values.join(",")}\n`;
+      });
+
+      const grandTotals = activeMonths.map((m) =>
+        fmt(employees.reduce((sum, e) => sum + (e.months?.[m] || 0), 0))
+      );
+
+      csv += `Grand Total,${grandTotals.join(",")}\n`;
+    }
+
+    // Category View (Default)
+    else {
+      categories.forEach((cat) => {
+        csv += `${cat.label},${cat.values.map(fmt).join(",")}\n`;
+      });
+
+      csv += `Total Allocated,${totals.map(fmt).join(",")}\n`;
+      csv += `Total People Capacity,${peopleCapacity.map(fmt).join(",")}\n`;
+      csv += `Remaining Capacity,${remainingCapacity.map(fmt).join(",")}\n`;
+    }
+
+    const blob = new Blob([csv], {
+      type: "text/csv;charset=utf-8;",
+    });
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.setAttribute(
+      "download",
+      `capacity_report_${viewMode}_${startMonth}.csv`
+    );
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
   /* ---------------------------------------------------------
      LOAD USER
   --------------------------------------------------------- */
@@ -291,6 +367,7 @@ export default function CapacitySummary() {
       </tbody>
     );
   }
+  
 
   /* ---------------------------------------------------------
      FINAL RENDER
@@ -355,9 +432,12 @@ export default function CapacitySummary() {
               </select>
             </div>
 
-            <button className="bg-[#017ACB] text-white px-5 py-2 rounded-md shadow hover:bg-[#015f9c] transition shadow-[inset_2px_2px_0_rgba(255,255,255,1),inset_-2px_-2px_0_rgba(0,0,0,0.32)]
-              active:shadow-[inset_2px_2px_0_rgba(255,255,255,1),inset_-2px_-2px_0_rgba(0,0,0,0.32)]">
-              Export CSV
+            <button
+                 onClick={handleExportCSV}
+                 className="bg-[#017ACB] text-white px-5 py-2 rounded-md shadow hover:bg-[#015f9c] transition shadow-[inset_2px_2px_0_rgba(255,255,255,1),inset_-2px_-2px_0_rgba(0,0,0,0.32)]
+                 active:shadow-[inset_2px_2px_0_rgba(255,255,255,1),inset_-2px_-2px_0_rgba(0,0,0,0.32)]"
+                >
+               Export CSV
             </button>
           </div>
         </div>
@@ -461,4 +541,3 @@ export default function CapacitySummary() {
     </div>
   );
 }
-
